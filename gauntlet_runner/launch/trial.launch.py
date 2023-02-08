@@ -31,9 +31,17 @@ def generate_launch_description():
         [FindPackageShare(LaunchConfiguration('nav_config_package')), '/launch/bringup.launch.py'],
     ))
 
+    ld.add_action(
+        DeclareLaunchArgument(
+            'trial_config_path',
+            description='The path to the parameter file for the run_trial node'
+        )
+    )
+
     run_trial_node = Node(
         package='gauntlet_runner',
         executable='run_trial',
+        parameters=[LaunchConfiguration('trial_config_path')],
         output='screen',
     )
 

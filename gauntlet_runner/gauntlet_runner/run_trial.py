@@ -2,11 +2,16 @@ import rclpy
 from simple_actions.simple_client import SimpleActionClient, ResultCode
 from rclpy.node import Node
 from nav2_msgs.action import NavigateToPose
+from tf_transformations import quaternion_from_euler
 
 
 class TrialRunner(Node):
     def __init__(self):
         super().__init__('trial_runner')
+        self.declare_parameter('goal_pose_x', 0.0)
+        self.declare_parameter('goal_pose_y', 0.0)
+        self.declare_parameter('goal_pose_yaw', 0.0)
+
         self.nav_action_client = SimpleActionClient(self, NavigateToPose, '/navigate_to_pose')
         self.completed = None
         self.send_goal()
@@ -14,7 +19,14 @@ class TrialRunner(Node):
     def send_goal(self):
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose.header.frame_id = 'map'
-        goal_msg.pose.pose.position.x = 2.0
+        goal_msg.pose.pose.position.x = self.get_parameter('goal_pose_x').value
+        goal_msg.pose.pose.position.y = self.get_parameter('goal_pose_y').value
+
+        quat = quaternion_from_euler(0, 0, self.get_parameter('goal_pose_yaw').value)
+        goal_msg.pose.pose.orientation.w = quat[0]
+        goal_msg.pose.pose.orientation.x = quat[1]
+        goal_msg.pose.pose.orientation.y = quat[2]
+        goal_msg.pose.pose.orientation.z = quat[3]
         self.nav_action_client.send_goal(goal_msg, self.done)
 
     def done(self, result_code, result):
