@@ -14,6 +14,7 @@ class TrialRunner(Node):
 
         self.nav_action_client = SimpleActionClient(self, NavigateToPose, '/navigate_to_pose')
         self.completed = None
+        self.timer = None
         self.send_goal()
 
     def send_goal(self):
@@ -22,16 +23,24 @@ class TrialRunner(Node):
         goal_msg.pose.pose.position.x = self.get_parameter('goal_pose_x').value
         goal_msg.pose.pose.position.y = self.get_parameter('goal_pose_y').value
 
-        quat = quaternion_from_euler(0, 0, self.get_parameter('goal_pose_yaw').value)
+        yaw = self.get_parameter('goal_pose_yaw').value
+        quat = quaternion_from_euler(0, 0, yaw)
         goal_msg.pose.pose.orientation.w = quat[0]
         goal_msg.pose.pose.orientation.x = quat[1]
         goal_msg.pose.pose.orientation.y = quat[2]
         goal_msg.pose.pose.orientation.z = quat[3]
+        self.get_logger().info(f'Sending goal '
+                               f'{goal_msg.pose.pose.position.x:.2f} '
+                               f'{goal_msg.pose.pose.position.y:.2f} '
+                               f'{yaw:.2f}')
         self.nav_action_client.send_goal(goal_msg, self.done)
+
+        if self.timer:
+            self.timer.cancel()
 
     def done(self, result_code, result):
         if result_code == ResultCode.REJECTED:
-            self.create_timer(1.0, self.send_goal)
+            self.timer = self.create_timer(1.0, self.send_goal)
             return
 
         self.get_logger().info(str(result))
