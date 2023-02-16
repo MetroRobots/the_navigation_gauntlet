@@ -38,6 +38,20 @@ def generate_launch_description():
         )
     )
 
+    ld.add_action(
+        DeclareLaunchArgument(
+            'record_config_path',
+            default_value='',
+            description='The path to a configuration file for the bag recorder.'
+        )
+    )
+    ld.add_action(Node(
+        package='gauntlet_runner',
+        executable='recorder',
+        parameters=[LaunchConfiguration('record_config_path')],
+        output='screen',
+    ))
+
     run_trial_node = Node(
         package='gauntlet_runner',
         executable='run_trial',

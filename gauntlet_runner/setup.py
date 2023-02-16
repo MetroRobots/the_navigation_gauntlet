@@ -21,6 +21,7 @@ setup(
         'console_scripts': [
             'run_trial = gauntlet_runner.run_trial:main',
             'run_trials = gauntlet_runner.run_trials:main',
+            'recorder = gauntlet_runner.recorder:main',
         ]
     },
 )
