@@ -1,10 +1,11 @@
 import rclpy
-from simple_actions.simple_client import SimpleActionClient, ResultCode
+from rclpy.action import ActionClient
 from rclpy.node import Node
 from nav2_msgs.action import NavigateToPose
 from tf_transformations import quaternion_from_euler
 from geometry_msgs.msg import PoseStamped
 from nav_2d_msgs.msg import Pose2DStamped
+from action_msgs.msg import GoalStatus
 
 
 class TrialRunner(Node):
@@ -13,14 +14,22 @@ class TrialRunner(Node):
         self.declare_parameter('goal_pose_x', 0.0)
         self.declare_parameter('goal_pose_y', 0.0)
         self.declare_parameter('goal_pose_yaw', 0.0)
-
-        self.nav_action_client = SimpleActionClient(self, NavigateToPose, '/navigate_to_pose')
         self.completed = None
         self.logger = self.get_logger()
         self.timer = None
 
-        self.pub_3d = self.create_publisher(PoseStamped, '/goal_pose', 1)
-        self.pub_2d = self.create_publisher(Pose2DStamped, '/goal_pose_2d', 1)
+        self.nav_action_client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
+        printed = False
+        while not self.nav_action_client.wait_for_server(timeout_sec=5.0):
+            if not printed:
+                self.logger.warn('Waiting for /navigate_to_pose')
+                printed = True
+        if printed:
+            self.logger.info('Connected to /navigate_to_pose')
+
+        self.pub_3d = self.create_publisher(PoseStamped, '/trial_goal_pose', 1)
+        self.pub_2d = self.create_publisher(Pose2DStamped, '/trial_goal_pose_2d', 1)
+        self.pub_status = self.create_publisher(GoalStatus, '/navigation_result', 1)
 
         # Construct Goal
         self.goal_msg = NavigateToPose.Goal()
@@ -41,6 +50,21 @@ class TrialRunner(Node):
         self.pose2d.pose.y = self.goal_msg.pose.pose.position.y
         self.pose2d.pose.theta = yaw
 
+        self.send_goal()
+
+    def send_goal(self):
+        self._goal_future = self.nav_action_client.send_goal_async(self.goal_msg)
+        self._goal_future.add_done_callback(self._goal_response_callback)
+
+        if self.timer:
+            self.timer.cancel()
+
+    def _goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.timer = self.create_timer(1.0, self.send_goal)
+            return
+
         self.logger.info(f'Sending goal '
                          f'{self.pose2d.pose.x:.2f} '
                          f'{self.pose2d.pose.y:.2f} '
@@ -48,20 +72,16 @@ class TrialRunner(Node):
         self.pub_3d.publish(self.goal_msg.pose)
         self.pub_2d.publish(self.pose2d)
 
-        self.send_goal()
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self._result_callback)
 
-    def send_goal(self):
-        self.nav_action_client.send_goal(self.goal_msg, self.done)
+    def _result_callback(self, future):
+        result = future.result()
 
-        if self.timer:
-            self.timer.cancel()
+        status_msg = GoalStatus()
+        status_msg.status = result.status
 
-    def done(self, result_code, result):
-        if result_code == ResultCode.REJECTED:
-            self.timer = self.create_timer(1.0, self.send_goal)
-            return
-
-        self.get_logger().info(str(result))
+        self.logger.info('Navigation trial complete!')
         rclpy.shutdown()
 
 
