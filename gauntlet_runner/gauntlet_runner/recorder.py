@@ -16,7 +16,7 @@ class BagRecorder(Node):
         self.cmd = ['ros2', 'bag', 'record']
         self.cmd += ['-o', target]
         self.cmd += ['-s', 'mcap']
-        topics = ['/tf', '/tf_static', '/clock']
+        topics = ['/tf', '/tf_static', '/clock', '/trial_goal_pose', '/trial_goal_pose_2d', '/navigation_result']
         topics += self.get_parameter('topics').value
         self.cmd += topics
         self.get_logger().info(f'Recording {len(topics)} topics to {full_target}')

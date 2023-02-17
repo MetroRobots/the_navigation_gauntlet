@@ -80,6 +80,7 @@ class TrialRunner(Node):
 
         status_msg = GoalStatus()
         status_msg.status = result.status
+        self.pub_status.publish(status_msg)
 
         self.logger.info('Navigation trial complete!')
         rclpy.shutdown()
