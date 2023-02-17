@@ -82,3 +82,47 @@ def angle_to_goal(data):
     goals = data['/trial_goal_pose_2d']
     path = data['/path2d']
     return shortest_angular_distance(goals[0].msg.pose.theta, path[-1].msg.pose.theta)
+
+
+@nav_metric
+def min_distance_to_goal(data):
+    goal = data['/trial_goal_pose'][0].msg.pose.position
+    min_d = None
+    for t, msg in data['/path']:
+        d = distance(goal, msg.pose.position)
+        if min_d is None or min_d > d:
+            min_d = d
+    return min_d
+
+
+@nav_metric
+def avg_distance_to_goal(data):
+    goal = data['/trial_goal_pose'][0].msg.pose.position
+    total_d = 0.0
+    n = 0
+    for t, msg in data['/path']:
+        total_d += distance(goal, msg.pose.position)
+        n += 1
+    return total_d / n
+
+
+@nav_metric
+def path_length(data):
+    total = 0.0
+    prev_pose = None
+    for o in data['/path']:
+        p = o.msg.pose.position
+        if prev_pose is None:
+            prev_pose = p
+        total += distance(p, prev_pose)
+        prev_pose = p
+
+    return total
+
+
+@nav_metric
+def optimum_efficiency(data):
+    pl = path_length(data)
+    path = data['/path']
+    min_d = distance(path[-1].msg.pose.position, path[0].msg.pose.position)
+    return pl / min_d

@@ -9,6 +9,7 @@ RecordedMessage = collections.namedtuple('RecordedMessage', 't msg')
 def nav_metric(f):
     """Decorator definition"""
     _nav_metrics[f.__name__] = f
+    return f
 
 
 def get_metrics():
