@@ -1,5 +1,6 @@
-from .metric import nav_metric
 from action_msgs.msg import GoalStatus
+
+from .metric import nav_metric
 
 
 @nav_metric
