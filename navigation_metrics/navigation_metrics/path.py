@@ -30,15 +30,25 @@ def transform_to_pose(transform):
     return pose
 
 
-def tf_to_pose(data):
+def tf_to_pose(data, period=0.1):
     seq = []
+    start_t = data['/trial_goal_pose'][0].t
+    end_t = data['/navigation_result'][0].t
+    last_t = None
+
     for t, msg in data['/tf']:
+        if t < start_t:
+            continue
+        elif t > end_t:
+            break
         for transform in msg.transforms:
             if transform.header.frame_id == 'map' and transform.child_frame_id == 'base_link':
-                ps = PoseStamped()
-                ps.header = transform.header
-                ps.pose = transform_to_pose(transform.transform)
-                seq.append(RecordedMessage(t, ps))
+                if last_t is None or (t - last_t) >= period:
+                    ps = PoseStamped()
+                    ps.header = transform.header
+                    ps.pose = transform_to_pose(transform.transform)
+                    seq.append(RecordedMessage(t, ps))
+                    last_t = t
     return seq
 
 
