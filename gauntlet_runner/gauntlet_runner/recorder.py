@@ -15,7 +15,7 @@ class BagRecorder(Node):
         full_target = pathlib.Path(target).resolve()
         self.cmd = ['ros2', 'bag', 'record']
         self.cmd += ['-o', target]
-        self.cmd += ['-s', 'mcap']
+        # self.cmd += ['-s', 'mcap']
         topics = ['/tf', '/tf_static', '/clock', '/trial_goal_pose', '/trial_goal_pose_2d', '/navigation_result']
         topics += self.get_parameter('topics').value
         self.cmd += topics

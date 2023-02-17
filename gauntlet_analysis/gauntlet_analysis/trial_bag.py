@@ -2,6 +2,7 @@ from rosbags.rosbag2 import Reader, Writer
 from rosbags.serde import deserialize_cdr, serialize_cdr
 from rosbags.typesys import get_types_from_msg, register_types
 from rosidl_runtime_py import get_interface_path
+from navigation_metrics import RecordedMessage
 import pathlib
 import tempfile
 import shutil
@@ -118,7 +119,7 @@ class TrialBag:
         seq = []
         for conn, timestamp, rawdata in self.bag_reader.messages(connections=[self.connection_map[topic]]):
             ts = timestamp / 1e9
-            seq.append((ts, self.deserializer(rawdata, conn.msgtype)))
+            seq.append(RecordedMessage(ts, self.deserializer(rawdata, conn.msgtype)))
         return seq
 
     def save(self, output_path):
