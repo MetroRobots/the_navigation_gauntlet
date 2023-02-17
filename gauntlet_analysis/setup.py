@@ -16,4 +16,5 @@ setup(
     maintainer_email='davidvlu@gmail.com',
     description='Logic for analyzing a group of bag files from navigation trials',
     license='BSD',
+    entry_points={'console_scripts': ['analyze_bag = gauntlet_analysis.analyze_bag:main']},
 )
