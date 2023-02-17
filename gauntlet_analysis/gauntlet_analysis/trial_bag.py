@@ -30,15 +30,20 @@ class TrialBag:
             self.bag_reader.close()
 
     def __getitem__(self, topic):
-        if topic in self.cached_topics:
+        if topic in self.connection_map:
+            # Existing topic
+            if topic not in self.cached_topics:
+                self.cached_topics[topic] = self.read_topic_sequence(topic)
             return self.cached_topics[topic]
+        else:
+            raise RuntimeError(f'Cannot find {topic} in bag or conversion functions')
 
-        self.cached_topics[topic] = []
-
+    def read_topic_sequence(self, topic):
+        seq = []
         for conn, timestamp, rawdata in self.bag_reader.messages(connections=[self.connection_map[topic]]):
             ts = timestamp / 1e9
-            self.cached_topics[topic].append((ts, deserialize_cdr(rawdata, conn.msgtype)))
-        return self.cached_topics[topic]
+            seq.append((ts, deserialize_cdr(rawdata, conn.msgtype)))
+        return seq
 
     def __repr__(self):
         return f'TrialBag({self.path.stem})'
