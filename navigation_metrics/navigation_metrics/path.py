@@ -12,24 +12,18 @@ def distance(p0, p1):
     return hypot(dx, dy, dz)
 
 
-def copy_fields(target, src):
-    for field, field_type in target.get_fields_and_field_types().items():
-        if '/' in field_type:
-            copy_fields(getattr(target, field), getattr(src, field))
-        else:
-            setattr(target, field, getattr(src, field))
-
-
 def vector_to_point(v):
     p = Point()
-    copy_fields(p, v)
+    p.x = v.x
+    p.y = v.y
+    p.z = v.z
     return p
 
 
 def transform_to_pose(transform):
     pose = Pose()
     pose.position = vector_to_point(transform.translation)
-    copy_fields(pose.orientation, transform.rotation)
+    pose.orientation = transform.rotation
     return pose
 
 
@@ -39,7 +33,7 @@ def tf_to_pose(data):
         for transform in msg.transforms:
             if transform.header.frame_id == 'map' and transform.child_frame_id == 'base_link':
                 ps = PoseStamped()
-                copy_fields(ps.header, transform.header)
+                ps.header = transform.header
                 ps.pose = transform_to_pose(transform.transform)
                 seq.append((t, ps))
     return seq

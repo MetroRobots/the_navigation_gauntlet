@@ -5,6 +5,7 @@ from rosidl_runtime_py import get_interface_path
 import pathlib
 import tempfile
 import shutil
+import re
 
 types_to_register = {}
 for type_name in ['action_msgs/msg/GoalStatus',
@@ -22,6 +23,43 @@ def get_message_name(obj):
     return '/'.join([pkg_name, interface_type, c.__qualname__])
 
 
+class CustomDeserializer:
+    SEQUENCE_PATTERN = re.compile(r'sequence<([_\w]+)/([_\w]+)>')
+
+    def __init__(self):
+        self.msg_types = {}
+
+    def __call__(self, rawdata, msgtype):
+        basic = deserialize_cdr(rawdata, msgtype)
+
+        pkg, msg_name = msgtype.split('/msg/')
+        actual_msg = self.get_msg_class(pkg, msg_name)()
+        self.copy_fields(actual_msg, basic)
+        return actual_msg
+
+    def get_msg_class(self, pkg, msg_name):
+        key = pkg, msg_name
+        if key not in self.msg_types:
+            mod = __import__(f'{pkg}.msg').msg
+            self.msg_types[key] = getattr(mod, msg_name)
+        return self.msg_types[key]
+
+    def copy_fields(self, target, src):
+        for field, field_type in target.get_fields_and_field_types().items():
+            m = CustomDeserializer.SEQUENCE_PATTERN.match(field_type)
+            if m:
+                cls = self.get_msg_class(*m.groups())
+                dest = getattr(target, field)
+                for array_mem in getattr(src, field):
+                    array_msg = cls()
+                    self.copy_fields(array_msg, array_mem)
+                    dest.append(array_msg)
+            elif '/' in field_type:
+                self.copy_fields(getattr(target, field), getattr(src, field))
+            else:
+                setattr(target, field, getattr(src, field))
+
+
 class TrialBag:
 
     conversion_functions = {}
@@ -31,6 +69,7 @@ class TrialBag:
         self.path = path
         self.cached_topics = {}
         self.new_topics = {}
+        self.deserializer = CustomDeserializer()
 
         self.bag_reader = Reader(str(path))
         self.bag_reader.open()
@@ -78,7 +117,7 @@ class TrialBag:
         seq = []
         for conn, timestamp, rawdata in self.bag_reader.messages(connections=[self.connection_map[topic]]):
             ts = timestamp / 1e9
-            seq.append((ts, deserialize_cdr(rawdata, conn.msgtype)))
+            seq.append((ts, self.deserializer(rawdata, conn.msgtype)))
         return seq
 
     def save(self, output_path):
