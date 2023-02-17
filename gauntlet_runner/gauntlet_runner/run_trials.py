@@ -20,11 +20,12 @@ def main():
 
     record_config = {'topics': []}
 
-    nav_pkg_path = get_package_share_path(args.nav_config_package)
-    config_path = nav_pkg_path / 'config/nav_gauntlet.yaml'
-    if config_path.exists():
-        config = yaml.safe_load(open(config_path))
-        record_config['topics'] += config.get('topics', [])
+    for pkg in [args.simulator_package, args.nav_config_package]:
+        pkg_path = get_package_share_path(pkg)
+        config_path = pkg_path / 'config/nav_gauntlet.yaml'
+        if config_path.exists():
+            config = yaml.safe_load(open(config_path))
+            record_config['topics'] += config.get('topics', [])
 
     trial_launch = get_share_file_path_from_package(
         package_name='gauntlet_runner',

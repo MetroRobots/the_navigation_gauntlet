@@ -24,7 +24,6 @@ class BagRecorder(Node):
         self.process = subprocess.Popen(self.cmd)
 
     def __del__(self):
-        self.get_logger().info('Bag Conclusion')
         self.process.send_signal(signal.SIGINT)
 
 
