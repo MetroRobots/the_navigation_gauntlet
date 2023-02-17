@@ -5,7 +5,7 @@ from angles import shortest_angular_distance
 from geometry_msgs.msg import PoseStamped, Point, Pose
 from nav_2d_msgs.msg import Pose2DStamped
 
-from .metric import RecordedMessage, nav_metric
+from .metric import RecordedMessage, nav_metric, metric_conversion_function
 
 
 def distance(p0, p1):
@@ -30,6 +30,7 @@ def transform_to_pose(transform):
     return pose
 
 
+@metric_conversion_function('/path')
 def tf_to_pose(data, period=0.1):
     seq = []
     start_t = data['/trial_goal_pose'][0].t
@@ -52,6 +53,7 @@ def tf_to_pose(data, period=0.1):
     return seq
 
 
+@metric_conversion_function('/path2d')
 def pose_to_pose2d(data):
     seq = []
     for t, msg in data['/path']:

@@ -2,7 +2,7 @@ from rosbags.rosbag2 import Reader, Writer
 from rosbags.serde import deserialize_cdr, serialize_cdr
 from rosbags.typesys import get_types_from_msg, register_types
 from rosidl_runtime_py import get_interface_path
-from navigation_metrics import RecordedMessage
+from navigation_metrics import RecordedMessage, get_conversion_functions
 import pathlib
 import tempfile
 import shutil
@@ -62,9 +62,6 @@ class CustomDeserializer:
 
 
 class TrialBag:
-
-    conversion_functions = {}
-
     def __init__(self, path, write_mods=False):
         self.bag_reader = None
         self.path = path
@@ -97,20 +94,17 @@ class TrialBag:
 
             shutil.move(str(temp_bag_file), str(self.path))
 
-    @staticmethod
-    def register_conversion(topic, conversion_function):
-        TrialBag.conversion_functions[topic] = conversion_function
-
     def __getitem__(self, topic):
         if topic in self.connection_map:
             # Existing topic
             if topic not in self.cached_topics:
                 self.cached_topics[topic] = self.read_topic_sequence(topic)
             return self.cached_topics[topic]
-        elif topic in TrialBag.conversion_functions:
+        elif topic in get_conversion_functions():
             # New Topic
+            fne = get_conversion_functions()[topic]
             if topic not in self.new_topics:
-                self.new_topics[topic] = TrialBag.conversion_functions[topic](self)
+                self.new_topics[topic] = fne(self)
             return self.new_topics[topic]
         else:
             raise RuntimeError(f'Cannot find {topic} in bag or conversion functions')
