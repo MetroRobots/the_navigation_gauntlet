@@ -1,6 +1,7 @@
 import argparse
 import pathlib
 from gauntlet_analysis.trial_bag import TrialBag
+from navigation_metrics import get_metrics
 
 
 def main():
@@ -9,7 +10,9 @@ def main():
     args = parser.parse_args()
 
     bag = TrialBag(args.bag_path)
-    print(bag)
+    for name, metric in get_metrics().items():
+        m = metric(bag)
+        print(name, m)
 
 
 if __name__ == '__main__':
