@@ -64,9 +64,10 @@ class TrialBag:
 
     conversion_functions = {}
 
-    def __init__(self, path):
+    def __init__(self, path, write_mods=False):
         self.bag_reader = None
         self.path = path
+        self.write_mods = write_mods
         self.cached_topics = {}
         self.new_topics = {}
         self.deserializer = CustomDeserializer()
@@ -80,7 +81,7 @@ class TrialBag:
         if not self.bag_reader:
             return
 
-        if not self.new_topics:
+        if not self.new_topics or not self.write_mods:
             # Just close the reader
             self.bag_reader.close()
             return
