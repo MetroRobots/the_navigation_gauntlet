@@ -1,4 +1,3 @@
-from math import hypot
 from tf_transformations import euler_from_quaternion
 from angles import shortest_angular_distance
 
@@ -6,13 +5,7 @@ from geometry_msgs.msg import PoseStamped, Point, Pose
 from nav_2d_msgs.msg import Pose2DStamped
 
 from .metric import RecordedMessage, nav_metric, metric_conversion_function
-
-
-def distance(p0, p1):
-    dx = p0.x - p1.x
-    dy = p0.y - p1.y
-    dz = p0.z - p1.z
-    return hypot(dx, dy, dz)
+from .util import pose_stamped_distance, point_distance
 
 
 def vector_to_point(v):
@@ -74,7 +67,7 @@ def distance_to_goal(data):
     goals = data['/trial_goal_pose']
     path = data['/path']
 
-    return distance(goals[0].msg.pose.position, path[-1].msg.pose.position)
+    return pose_stamped_distance(goals[0].msg, path[-1].msg)
 
 
 @nav_metric
@@ -86,10 +79,10 @@ def angle_to_goal(data):
 
 @nav_metric
 def min_distance_to_goal(data):
-    goal = data['/trial_goal_pose'][0].msg.pose.position
+    goal = data['/trial_goal_pose'][0].msg
     min_d = None
     for t, msg in data['/path']:
-        d = distance(goal, msg.pose.position)
+        d = pose_stamped_distance(goal, msg)
         if min_d is None or min_d > d:
             min_d = d
     return min_d
@@ -97,11 +90,11 @@ def min_distance_to_goal(data):
 
 @nav_metric
 def avg_distance_to_goal(data):
-    goal = data['/trial_goal_pose'][0].msg.pose.position
+    goal = data['/trial_goal_pose'][0].msg
     total_d = 0.0
     n = 0
     for t, msg in data['/path']:
-        total_d += distance(goal, msg.pose.position)
+        total_d += pose_stamped_distance(goal, msg)
         n += 1
     return total_d / n
 
@@ -109,13 +102,13 @@ def avg_distance_to_goal(data):
 @nav_metric
 def path_length(data):
     total = 0.0
-    prev_pose = None
+    prev_point = None
     for o in data['/path']:
         p = o.msg.pose.position
-        if prev_pose is None:
-            prev_pose = p
-        total += distance(p, prev_pose)
-        prev_pose = p
+        if prev_point is None:
+            prev_point = p
+        total += point_distance(p, prev_point)
+        prev_point = p
 
     return total
 
@@ -124,5 +117,5 @@ def path_length(data):
 def optimum_efficiency(data):
     pl = path_length(data)
     path = data['/path']
-    min_d = distance(path[-1].msg.pose.position, path[0].msg.pose.position)
+    min_d = pose_stamped_distance(path[-1].msg, path[0].msg)
     return pl / min_d
