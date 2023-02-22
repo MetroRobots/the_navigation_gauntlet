@@ -11,7 +11,9 @@ import re
 types_to_register = {}
 for type_name in ['action_msgs/msg/GoalStatus',
                   'action_msgs/msg/GoalInfo',
-                  'nav_2d_msgs/msg/Pose2DStamped']:
+                  'nav_2d_msgs/msg/Pose2DStamped',
+                  'nav_2d_msgs/msg/Twist2DStamped',
+                  'nav_2d_msgs/msg/Twist2D']:
     i_path = pathlib.Path(get_interface_path(type_name))
     msg_text = i_path.read_text()
     types_to_register.update(get_types_from_msg(msg_text, type_name))
@@ -94,7 +96,13 @@ class TrialBag:
 
             shutil.move(str(temp_bag_file), str(self.path))
 
-    def __getitem__(self, topic):
+    def __getitem__(self, arg):
+        if isinstance(arg, str):
+            return self.get_single_topic(arg)
+        else:
+            return self.read_multiple_topics(arg)
+
+    def get_single_topic(self, topic):
         if topic in self.connection_map:
             # Existing topic
             if topic not in self.cached_topics:
@@ -115,6 +123,45 @@ class TrialBag:
             ts = timestamp / 1e9
             seq.append(RecordedMessage(ts, self.deserializer(rawdata, conn.msgtype)))
         return seq
+
+    def read_multiple_topics(self, topics):
+        seqs = {}
+        shortest = None
+        shortest_length = None
+
+        for topic in topics:
+            seq = self.get_single_topic(topic)
+            seqs[topic] = seq
+            n = len(seq)
+            if shortest is None or shortest_length > n:
+                shortest = topic
+                shortest_length = n
+
+        frames = []
+        for rmsg in seqs[shortest]:
+            frame = {}
+            frame[shortest] = rmsg
+            frames.append(frame)
+
+        for topic, seq in seqs.items():
+            if topic == shortest:
+                continue
+
+            for frame in frames:
+                for rmsg in seq:
+                    if topic not in frame:
+                        frame[topic] = rmsg
+                        continue
+                    existing_dt = abs(frame[shortest].t - frame[topic].t)
+                    new_dt = abs(frame[shortest].t - rmsg.t)
+                    if new_dt < existing_dt:
+                        frame[topic] = rmsg
+
+        for frame in frames:
+            rmsgs = []
+            for topic in topics:
+                rmsgs.append(frame[topic])
+            yield rmsgs
 
     def save(self, output_path):
         with Writer(output_path) as writer:
