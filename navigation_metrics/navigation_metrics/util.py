@@ -27,7 +27,11 @@ def stamp_to_float(stamp):
     return stamp.sec + stamp.nanosec / 1e9
 
 
-def average(series, getter):
+def default_getter(rmsg):
+    return rmsg.msg.data
+
+
+def average(series, getter=default_getter):
     total = 0.0
     count = 0
     for rmsg in series:
@@ -36,10 +40,24 @@ def average(series, getter):
     return total / count
 
 
-def metric_max(series, getter):
+def metric_min(series, getter=default_getter):
+    best = None
+    for rmsg in series:
+        v = getter(rmsg)
+        if best is None or v < best:
+            best = v
+    return best
+
+
+def metric_max(series, getter=default_getter):
     best = None
     for rmsg in series:
         v = getter(rmsg)
         if best is None or v > best:
             best = v
     return best
+
+
+def metric_final(series, getter=default_getter):
+    rmsg = series[-1]
+    return getter(rmsg)

@@ -3,9 +3,10 @@ from angles import shortest_angular_distance
 
 from geometry_msgs.msg import PoseStamped, Point, Pose
 from nav_2d_msgs.msg import Pose2DStamped
+from std_msgs.msg import Float32
 
 from .metric import RecordedMessage, nav_metric, metric_conversion_function
-from .util import pose_stamped_distance, point_distance
+from .util import pose_stamped_distance, point_distance, metric_min, average, metric_final
 
 
 def vector_to_point(v):
@@ -62,12 +63,20 @@ def pose_to_pose2d(data):
     return seq
 
 
+@metric_conversion_function('/distance_to_goal')
+def pose_to_goal_distance(data):
+    goal = data['/trial_goal_pose'][0].msg
+    seq = []
+    for t, msg in data['/path']:
+        fmsg = Float32()
+        fmsg.data = pose_stamped_distance(goal, msg)
+        seq.append(RecordedMessage(t, fmsg))
+    return seq
+
+
 @nav_metric
 def distance_to_goal(data):
-    goals = data['/trial_goal_pose']
-    path = data['/path']
-
-    return pose_stamped_distance(goals[0].msg, path[-1].msg)
+    return metric_final(data['/distance_to_goal'])
 
 
 @nav_metric
@@ -79,24 +88,12 @@ def angle_to_goal(data):
 
 @nav_metric
 def min_distance_to_goal(data):
-    goal = data['/trial_goal_pose'][0].msg
-    min_d = None
-    for t, msg in data['/path']:
-        d = pose_stamped_distance(goal, msg)
-        if min_d is None or min_d > d:
-            min_d = d
-    return min_d
+    return metric_min(data['/distance_to_goal'])
 
 
 @nav_metric
 def avg_distance_to_goal(data):
-    goal = data['/trial_goal_pose'][0].msg
-    total_d = 0.0
-    n = 0
-    for t, msg in data['/path']:
-        total_d += pose_stamped_distance(goal, msg)
-        n += 1
-    return total_d / n
+    return average(data['/distance_to_goal'])
 
 
 @nav_metric
