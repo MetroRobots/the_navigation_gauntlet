@@ -1,6 +1,7 @@
 from rosbags.rosbag2 import Reader, Writer
 from rosbags.serde import deserialize_cdr, serialize_cdr
 from rosbags.typesys import get_types_from_msg, register_types
+from rosbags.typesys.types import FIELDDEFS
 from rosidl_runtime_py import get_interface_path
 from navigation_metrics import RecordedMessage, get_conversion_functions
 import pathlib
@@ -8,16 +9,43 @@ import tempfile
 import shutil
 import re
 
-types_to_register = {}
-for type_name in ['action_msgs/msg/GoalStatus',
-                  'action_msgs/msg/GoalInfo',
-                  'nav_2d_msgs/msg/Pose2DStamped',
-                  'nav_2d_msgs/msg/Twist2DStamped',
-                  'nav_2d_msgs/msg/Twist2D']:
-    i_path = pathlib.Path(get_interface_path(type_name))
-    msg_text = i_path.read_text()
-    types_to_register.update(get_types_from_msg(msg_text, type_name))
-register_types(types_to_register)
+
+def is_registered_type(msgtype):
+    return msgtype in FIELDDEFS
+
+
+def get_subtypes(tree):
+    if isinstance(tree, tuple):
+        if isinstance(tree[0], str):
+            field_type = tree[1]
+            if isinstance(field_type, tuple):
+                if field_type[0].value == 2:
+                    yield field_type[1]
+                elif field_type[0].value == 4:
+                    base_type = field_type[1][0]
+                    yield base_type[1]
+            return
+
+    for k in tree:
+        yield from get_subtypes(k)
+
+
+def register_new_type(type_name):
+    queue = [type_name]
+    types_to_register = {}
+
+    while queue:
+        msgtype = queue.pop(0)
+        i_path = pathlib.Path(get_interface_path(msgtype))
+        msg_text = i_path.read_text()
+        type_dict = get_types_from_msg(msg_text, msgtype)
+        types_to_register.update(type_dict)
+        for subtype in get_subtypes(type_dict[msgtype]):
+            if subtype in types_to_register or is_registered_type(subtype):
+                continue
+            queue.append(subtype)
+
+    register_types(types_to_register)
 
 
 def get_message_name(obj):
@@ -33,6 +61,8 @@ class CustomDeserializer:
         self.msg_types = {}
 
     def __call__(self, rawdata, msgtype):
+        if not is_registered_type(msgtype):
+            register_new_type(msgtype)
         basic = deserialize_cdr(rawdata, msgtype)
 
         pkg, msg_name = msgtype.split('/msg/')
