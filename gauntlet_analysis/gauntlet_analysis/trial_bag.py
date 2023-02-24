@@ -94,9 +94,10 @@ class CustomDeserializer:
 
 
 class TrialBag:
-    def __init__(self, path, write_mods=False):
+    def __init__(self, path, parameters={}, write_mods=False):
         self.bag_reader = None
         self.path = path
+        self.parameters = parameters
         self.write_mods = write_mods
         self.cached_topics = {}
         self.new_topics = {}
@@ -192,6 +193,9 @@ class TrialBag:
             for topic in topics:
                 rmsgs.append(frame[topic])
             yield rmsgs
+
+    def get_param(self, name, default_value=None):
+        return self.parameters.get(name, default_value)
 
     def save(self, output_path):
         with Writer(output_path) as writer:
