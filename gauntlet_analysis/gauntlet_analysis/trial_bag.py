@@ -1,51 +1,11 @@
-from rosbags.rosbag2 import Reader, Writer
-from rosbags.serde import deserialize_cdr, serialize_cdr
-from rosbags.typesys import get_types_from_msg, register_types
-from rosbags.typesys.types import FIELDDEFS
-from rosidl_runtime_py import get_interface_path
+from rosbag2_py import SequentialReader, SequentialWriter
+from rosbag2_py import StorageOptions, ConverterOptions, StorageFilter, TopicMetadata
+from rclpy.serialization import deserialize_message, serialize_message
+from rosidl_runtime_py.utilities import get_message
 from navigation_metrics import RecordedMessage, get_conversion_functions
 import pathlib
 import tempfile
 import shutil
-import re
-
-
-def is_registered_type(msgtype):
-    return msgtype in FIELDDEFS
-
-
-def get_subtypes(tree):
-    if isinstance(tree, tuple):
-        if isinstance(tree[0], str):
-            field_type = tree[1]
-            if isinstance(field_type, tuple):
-                if field_type[0].value == 4:
-                    field_type = field_type[1][0]
-
-                if field_type[0].value == 2:
-                    yield field_type[1]
-            return
-
-    for k in tree:
-        yield from get_subtypes(k)
-
-
-def register_new_type(type_name):
-    queue = [type_name]
-    types_to_register = {}
-
-    while queue:
-        msgtype = queue.pop(0)
-        i_path = pathlib.Path(get_interface_path(msgtype))
-        msg_text = i_path.read_text()
-        type_dict = get_types_from_msg(msg_text, msgtype)
-        types_to_register.update(type_dict)
-        for subtype in get_subtypes(type_dict[msgtype]):
-            if subtype in types_to_register or is_registered_type(subtype):
-                continue
-            queue.append(subtype)
-
-    register_types(types_to_register)
 
 
 def get_message_name(obj):
@@ -54,79 +14,34 @@ def get_message_name(obj):
     return '/'.join([pkg_name, interface_type, c.__qualname__])
 
 
-class CustomDeserializer:
-    SEQUENCE_PATTERN = re.compile(r'sequence<([_/\w\d]+)>')
-
-    def __init__(self):
-        self.msg_types = {}
-
-    def __call__(self, rawdata, msgtype):
-        if not is_registered_type(msgtype):
-            register_new_type(msgtype)
-        basic = deserialize_cdr(rawdata, msgtype)
-
-        pkg, msg_name = msgtype.split('/msg/')
-        actual_msg = self.get_msg_class(pkg, msg_name)()
-        self.copy_fields(actual_msg, basic)
-        return actual_msg
-
-    def get_msg_class(self, pkg, msg_name):
-        key = pkg, msg_name
-        if key not in self.msg_types:
-            mod = __import__(f'{pkg}.msg').msg
-            self.msg_types[key] = getattr(mod, msg_name)
-        return self.msg_types[key]
-
-    def copy_fields(self, target, src):
-        for field, field_type in target.get_fields_and_field_types().items():
-            m = CustomDeserializer.SEQUENCE_PATTERN.match(field_type)
-            if m:
-                subtype = m.group(1)
-                dest = getattr(target, field)
-                if '/' in subtype:
-                    cls = self.get_msg_class(*subtype.split('/'))
-                    for array_mem in getattr(src, field):
-                        array_msg = cls()
-                        self.copy_fields(array_msg, array_mem)
-                        dest.append(array_msg)
-                else:
-                    for array_mem in getattr(src, field):
-                        dest.append(array_mem)
-            elif '/' in field_type:
-                self.copy_fields(getattr(target, field), getattr(src, field))
-            else:
-                setattr(target, field, getattr(src, field))
-
-
 class TrialBag:
-    def __init__(self, path, parameters={}, write_mods=False):
+    def __init__(self, path, parameters={}, write_mods=False, read_everything=False, serialization_format='cdr'):
         self.bag_reader = None
         self.path = path
         self.parameters = parameters
         self.write_mods = write_mods
+        self.serialization_format = serialization_format
         self.cached_topics = {}
         self.new_topics = {}
-        self.deserializer = CustomDeserializer()
 
-        self.bag_reader = Reader(str(path))
-        self.bag_reader.open()
+        self.bag_options = (StorageOptions(str(self.path), 'sqlite3'),
+                            ConverterOptions(serialization_format, serialization_format))
+        reader = SequentialReader()
+        reader.open(*self.bag_options)
+        self.topic_types = reader.get_all_topics_and_types()
+        self.type_map = {tmeta.name: tmeta.type for tmeta in self.topic_types}
 
-        self.connection_map = {conn.topic: conn for conn in self.bag_reader.connections.values()}
+        if write_mods or read_everything:
+            self.read_topics(list(self.type_map.keys()))
 
     def __del__(self):
-        if not self.bag_reader:
-            return
-
         if not self.new_topics or not self.write_mods:
-            # Just close the reader
-            self.bag_reader.close()
             return
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             temp_bag_file = pathlib.Path(tmpdirname) / self.path.stem
 
             self.save(temp_bag_file)
-            self.bag_reader.close()
 
             shutil.rmtree(self.path)
 
@@ -139,13 +54,13 @@ class TrialBag:
             return self.read_multiple_topics(arg)
 
     def __contains__(self, topic):
-        return topic in self.connection_map or topic in get_conversion_functions()
+        return topic in self.type_map or topic in get_conversion_functions()
 
     def get_single_topic(self, topic):
-        if topic in self.connection_map:
+        if topic in self.type_map:
             # Existing topic
             if topic not in self.cached_topics:
-                self.cached_topics[topic] = self.read_topic_sequence(topic)
+                self.read_topics([topic])
             return self.cached_topics[topic]
         elif topic in get_conversion_functions():
             # New Topic
@@ -156,12 +71,20 @@ class TrialBag:
         else:
             raise RuntimeError(f'Cannot find {topic} in bag or conversion functions')
 
-    def read_topic_sequence(self, topic):
-        seq = []
-        for conn, timestamp, rawdata in self.bag_reader.messages(connections=[self.connection_map[topic]]):
-            ts = timestamp / 1e9
-            seq.append(RecordedMessage(ts, self.deserializer(rawdata, conn.msgtype)))
-        return seq
+    def read_topics(self, topics):
+        for topic in topics:
+            self.cached_topics[topic] = []
+
+        reader = SequentialReader()
+        reader.open(*self.bag_options)
+        storage_filter = StorageFilter(topics=topics)
+        reader.set_filter(storage_filter)
+
+        while reader.has_next():
+            (topic, rawdata, timestamp) = reader.read_next()
+            msg_type = get_message(self.type_map[topic])
+            msg = deserialize_message(rawdata, msg_type)
+            self.cached_topics[topic].append(RecordedMessage(timestamp / 1e9, msg))
 
     def read_multiple_topics(self, topics):
         seqs = {}
@@ -206,26 +129,25 @@ class TrialBag:
         return self.parameters.get(name, default_value)
 
     def save(self, output_path):
-        with Writer(output_path) as writer:
-            out_connections = {}
-            for conn_id, conn in self.bag_reader.connections.items():
-                out_connections[conn.topic] = writer.add_connection(
-                    conn.topic,
-                    conn.msgtype,
-                    conn.serialization_format,
-                    conn.offered_qos_profiles,
-                )
+        writer = SequentialWriter()
+        writer.open(StorageOptions(str(output_path), 'sqlite3'),
+                    ConverterOptions(self.serialization_format, self.serialization_format))
 
-            for conn, timestamp, data in self.bag_reader.messages():
-                writer.write(out_connections[conn.topic], timestamp, data)
+        for tmeta in self.topic_types:
+            writer.create_topic(tmeta)
+
+            for ts, msg in self.cached_topics[tmeta.name]:
+                writer.write(tmeta.name, serialize_message(msg), int(ts * 1e9))
 
             for topic, msgs in self.new_topics.items():
                 msgtype = get_message_name(msgs[0][1])
-                conn = writer.add_connection(topic, msgtype)
+                tmeta = TopicMetadata(name=topic, type=msgtype,
+                                      serialization_format=self.serialization_format)
+
+                writer.create_topic(tmeta)
+
                 for ts, msg in msgs:
-                    timestamp = int(ts * 1e9)
-                    data = serialize_cdr(msg, conn.msgtype)
-                    writer.write(conn, timestamp, data)
+                    writer.write(topic, serialize_message(msg), int(ts * 1e9))
 
     def __repr__(self):
         return f'TrialBag({self.path.stem})'
