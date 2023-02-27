@@ -19,11 +19,11 @@ def get_subtypes(tree):
         if isinstance(tree[0], str):
             field_type = tree[1]
             if isinstance(field_type, tuple):
+                if field_type[0].value == 4:
+                    field_type = field_type[1][0]
+
                 if field_type[0].value == 2:
                     yield field_type[1]
-                elif field_type[0].value == 4:
-                    base_type = field_type[1][0]
-                    yield base_type[1]
             return
 
     for k in tree:
@@ -55,7 +55,7 @@ def get_message_name(obj):
 
 
 class CustomDeserializer:
-    SEQUENCE_PATTERN = re.compile(r'sequence<([_\w]+)/([_\w]+)>')
+    SEQUENCE_PATTERN = re.compile(r'sequence<([_/\w\d]+)>')
 
     def __init__(self):
         self.msg_types = {}
@@ -81,12 +81,17 @@ class CustomDeserializer:
         for field, field_type in target.get_fields_and_field_types().items():
             m = CustomDeserializer.SEQUENCE_PATTERN.match(field_type)
             if m:
-                cls = self.get_msg_class(*m.groups())
+                subtype = m.group(1)
                 dest = getattr(target, field)
-                for array_mem in getattr(src, field):
-                    array_msg = cls()
-                    self.copy_fields(array_msg, array_mem)
-                    dest.append(array_msg)
+                if '/' in subtype:
+                    cls = self.get_msg_class(*subtype.split('/'))
+                    for array_mem in getattr(src, field):
+                        array_msg = cls()
+                        self.copy_fields(array_msg, array_mem)
+                        dest.append(array_msg)
+                else:
+                    for array_mem in getattr(src, field):
+                        dest.append(array_mem)
             elif '/' in field_type:
                 self.copy_fields(getattr(target, field), getattr(src, field))
             else:
@@ -132,6 +137,9 @@ class TrialBag:
             return self.get_single_topic(arg)
         else:
             return self.read_multiple_topics(arg)
+
+    def __contains__(self, topic):
+        return topic in self.connection_map or topic in get_conversion_functions()
 
     def get_single_topic(self, topic):
         if topic in self.connection_map:
