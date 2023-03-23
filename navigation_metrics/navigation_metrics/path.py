@@ -1,12 +1,16 @@
+from math import atan2
+
 from tf_transformations import euler_from_quaternion
 from angles import shortest_angular_distance
 
-from geometry_msgs.msg import PoseStamped, Point, Pose
-from nav_2d_msgs.msg import Pose2DStamped
+from geometry_msgs.msg import PoseStamped, Point, Pose, Pose2D
+from nav_2d_msgs.msg import Path2D, Pose2DStamped
 from std_msgs.msg import Float32
 
+from polygon_utils.shortest_path import shortest_path, make_point
+
 from .metric import RecordedMessage, nav_metric, metric_conversion_function
-from .util import pose_stamped_distance, point_distance, metric_min, average, metric_final
+from .util import pose_stamped_distance, pose2d_distance, point_distance, metric_min, average, metric_final
 
 
 def vector_to_point(v):
@@ -47,18 +51,23 @@ def tf_to_pose(data, period=0.1):
     return seq
 
 
+def pose_to_pose2d(msg):
+    pose2d = Pose2DStamped()
+    pose2d.header = msg.header
+    pose2d.pose.x = msg.pose.position.x
+    pose2d.pose.y = msg.pose.position.y
+    quat = msg.pose.orientation
+    qa = quat.x, quat.y, quat.z, quat.w
+    angles = euler_from_quaternion(qa)
+    pose2d.pose.theta = angles[-1]
+    return pose2d
+
+
 @metric_conversion_function('/path2d')
-def pose_to_pose2d(data):
+def convert_pose_to_pose2d(data):
     seq = []
     for t, msg in data['/path']:
-        pose2d = Pose2DStamped()
-        pose2d.header = msg.header
-        pose2d.pose.x = msg.pose.position.x
-        pose2d.pose.y = msg.pose.position.y
-        quat = msg.pose.orientation
-        qa = quat.x, quat.y, quat.z, quat.w
-        angles = euler_from_quaternion(qa)
-        pose2d.pose.theta = angles[-1]
+        pose2d = pose_to_pose2d(msg)
         seq.append(RecordedMessage(t, pose2d))
     return seq
 
@@ -115,4 +124,65 @@ def optimum_efficiency(data):
     pl = path_length(data)
     path = data['/path']
     min_d = pose_stamped_distance(path[-1].msg, path[0].msg)
-    return pl / min_d
+    return min_d / pl
+
+
+def interpolate_path(start_pose, path, goal_pose):
+    path_msg = Path2D()
+    path_msg.header = start_pose.header
+
+    path_msg.poses.append(pose_to_pose2d(start_pose).pose)
+
+    for point, next_point in zip(path, path[1:]):
+        dx = next_point.x - point.x
+        dy = next_point.y - point.y
+        pose = Pose2D()
+        pose.x = point.x
+        pose.y = point.y
+        pose.theta = atan2(dy, dx)
+
+        path_msg.poses.append(pose)
+
+    straight_last_pose = Pose2D()
+    straight_last_pose.x = path[-1].x
+    straight_last_pose.y = path[-1].y
+    straight_last_pose.theta = path_msg.poses[-1].theta
+    path_msg.poses.append(straight_last_pose)
+
+    path_msg.poses.append(pose_to_pose2d(goal_pose).pose)
+    return path_msg
+
+
+@metric_conversion_function('/optimal_path')
+def shortest_path_calculation(data):
+    polygons = data['/polygon_map'][0].msg
+    start_rmsg = data['/path'][0]
+    start_pose = start_rmsg.msg
+    goal_pose = data['/trial_goal_pose'][0].msg
+
+    start_pt = make_point(start_pose.pose.position.x, start_pose.pose.position.y)
+    goal_pt = make_point(goal_pose.pose.position.x, goal_pose.pose.position.y)
+
+    path2d = shortest_path(polygons, start_pt, goal_pt)
+
+    path = interpolate_path(start_pose, path2d, goal_pose)
+
+    seq = [RecordedMessage(start_rmsg.t, path)]
+    return seq
+
+
+@nav_metric
+def efficiency(data):
+    pl = path_length(data)
+
+    op = data['/optimal_path'][0].msg
+    od = 0.0
+    prev_pose = None
+    for pose in op.poses:
+        if prev_pose is None:
+            prev_pose = pose
+        d, _ = pose2d_distance(pose, prev_pose)
+        od += d
+        prev_pose = pose
+
+    return od / pl
