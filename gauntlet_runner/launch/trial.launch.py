@@ -36,9 +36,19 @@ def generate_launch_description():
             description='The name of the package from which to launch bringup.launch.py'
         )
     )
+    ld.add_action(
+        DeclareLaunchArgument(
+            'bonus_nav_configuration',
+            default_value='',
+            description='TODO'
+        )
+    )
 
     ld.add_action(IncludeLaunchDescription(
         [FindPackageShare(LaunchConfiguration('nav_config_package')), '/launch/bringup.launch.py'],
+        launch_arguments=[
+            ('bonus_nav_configuration', LaunchConfiguration('bonus_nav_configuration')),
+        ]
     ))
 
     ld.add_action(

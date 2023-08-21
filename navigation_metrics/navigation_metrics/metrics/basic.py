@@ -13,6 +13,15 @@ def convert_to_trial(data):
         return seq
 
 
+@flexible_bag_converter_function('/navigation_result')
+def find_endpoint(data):
+    goal_pose_msgs = data['/goal_pose']
+    if goal_pose_msgs:
+        start_bmsg = goal_pose_msgs[0]
+        seq = [BagMessage(start_bmsg.t, start_bmsg.msg)]
+        return seq
+
+
 @nav_metric
 def completed(data):
     results = data['/navigation_result']

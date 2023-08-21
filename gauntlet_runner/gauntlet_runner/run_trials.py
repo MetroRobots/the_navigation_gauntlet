@@ -2,6 +2,7 @@ import argparse
 from ament_index_python.packages import get_package_share_path
 from ros2launch.api import get_share_file_path_from_package, launch_a_launch_file
 import tempfile
+import pathlib
 import yaml
 
 
@@ -15,7 +16,9 @@ def write_temp_parameter_file(parameters, node_name='/**'):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('simulator_package')
+    parser.add_argument('robot')
     parser.add_argument('nav_config_package')
+    parser.add_argument('data_output_path', nargs='?', type=pathlib.Path, default='.')
     args = parser.parse_args()
 
     record_config = {'topics': []}
