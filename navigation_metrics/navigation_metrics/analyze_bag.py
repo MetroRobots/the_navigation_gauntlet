@@ -1,6 +1,6 @@
 import argparse
 import pathlib
-from . import FlexibleBag, get_metrics, global_metric_search
+from . import FlexibleBag, MissingTopicException, get_metrics, global_metric_search
 
 
 def compute_metrics(bag_path, ignore_errors=False):
@@ -11,6 +11,9 @@ def compute_metrics(bag_path, ignore_errors=False):
     for name, metric in get_metrics().items():
         try:
             m = metric(bag)
+        except MissingTopicException as e:
+            print(f'Missing data: {e} for {name}')
+            continue
         except Exception as e:
             if ignore_errors:
                 computed_values[name] = str(e)
@@ -34,6 +37,10 @@ def main():
     global_metric_search()
 
     metrics = compute_metrics(args.bag_path, args.ignore_errors)
+    if not metrics:
+        print('No metrics computed.')
+        return
+
     max_l = max(len(k) for k in metrics.keys())
     template = '{name:' + str(max_l + 1) + 's} {v_s:8}'
     for name, value in metrics.items():

@@ -20,6 +20,11 @@ def get_message_name(obj):
     return '/'.join([pkg_name, interface_type, c.__qualname__])
 
 
+class MissingTopicException(RuntimeError):
+    def __init__(self, topic):
+        RuntimeError.__init__(self, f'Cannot find topic: {topic}')
+
+
 class FlexibleBag:
     """
     A flexible bag container that allows for a variety of data access modes
@@ -117,9 +122,13 @@ class FlexibleBag:
         elif topic in FlexibleBag.conversion_functions:
             # Topic to be converted
             fne = FlexibleBag.conversion_functions[topic]
-            self[topic] = fne(self)
+            result = fne(self)
+            if result is None:
+                raise MissingTopicException(topic)
+            self[topic] = result
+            return result
         else:
-            raise RuntimeError(f'Cannot find {topic} in flexible bag')
+            raise MissingTopicException(topic)
 
     def read_multiple_topics(self, topics, allow_reuse=False):
         """
@@ -173,7 +182,7 @@ class FlexibleBag:
 
     def get_topics_by_type(self, msg_type_s):
         """Returns a list of topics whose type matches the string passed in"""
-        return self.topics_by_type[msg_type_s]
+        return sorted(self.topics_by_type[msg_type_s])
 
     def save(self, output_path):
         """Save results to file"""
