@@ -34,3 +34,25 @@ def average_clearing_distance(data):
 @nav_metric
 def maximum_clearing_distance(data):
     return metric_max(data['/obstacle_clearance'])
+
+
+@nav_metric
+def total_collisions(data):
+    start_t = data['/trial_goal_pose'][0].t
+    end_t = data['/navigation_result'][0].t
+
+    collision_topics = data.get_topics_by_type('collision_msgs/msg/Collisions')
+    total = 0
+    for topic in collision_topics:
+        for t, msg in data[topic]:
+            if t < start_t:
+                continue
+            elif t > end_t:
+                break
+            total += len(msg.collisions)
+    return total
+
+# TODO: Robot on Person collision
+# TODO: Person on Robot collision
+# TODO: Static obstacle collision
+# TODO: Distance to obstacle in front/left/right
