@@ -1,31 +1,19 @@
 import collections
 
 _nav_metrics = collections.OrderedDict()
-_conversion_functions = {}
-
-RecordedMessage = collections.namedtuple('RecordedMessage', 't msg')
 
 
+# decorator definition
 def nav_metric(f):
-    """Decorator definition"""
+    """A nav metric is defined as a function that takes a FlexibleBag as a parameter and
+       can return either a simple datatype (in which case the metric's name is assumed to be the same
+       as the function's name, or can return a dictionary of metric names to simple datatypes."""
     _nav_metrics[f.__name__] = f
     return f
 
 
 def get_metrics():
     return _nav_metrics
-
-
-def metric_conversion_function(topic):
-    """Decorator definition"""
-    def actual_decorator(f):
-        _conversion_functions[topic] = f
-        return f
-    return actual_decorator
-
-
-def get_conversion_functions():
-    return _conversion_functions
 
 
 def find_downstream_dependencies(target_package_name='navigation_metrics'):

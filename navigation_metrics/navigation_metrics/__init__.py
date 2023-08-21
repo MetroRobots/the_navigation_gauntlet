@@ -1,8 +1,9 @@
-from .basic import *  # noqa: F401, F403
-from .compute import *  # noqa: F401, F403
-from .obstacles import *  # noqa: F401, F403
-from .path import *  # noqa: F401, F403
-from .velocity import *  # noqa: F401, F403
-from .metric import RecordedMessage, get_metrics, get_conversion_functions, global_metric_search
+from .flexible_bag import BagMessage, FlexibleBag
+from .metrics.basic import *  # noqa: F401, F403
+from .metrics.compute import *  # noqa: F401, F403
+from .metrics.obstacles import *  # noqa: F401, F403
+from .metrics.path import *  # noqa: F401, F403
+from .metrics.velocity import *  # noqa: F401, F403
+from .metric import get_metrics, global_metric_search
 
-__all__ = ['RecordedMessage', 'get_metrics', 'get_conversion_functions', 'global_metric_search']
+__all__ = ['BagMessage', 'FlexibleBag', 'get_metrics', 'global_metric_search']

@@ -27,23 +27,23 @@ def stamp_to_float(stamp):
     return stamp.sec + stamp.nanosec / 1e9
 
 
-def default_getter(rmsg):
-    return rmsg.msg.data
+def default_getter(bmsg):
+    return bmsg.msg.data
 
 
 def average(series, getter=default_getter):
     total = 0.0
     count = 0
-    for rmsg in series:
-        total += getter(rmsg)
+    for bmsg in series:
+        total += getter(bmsg)
         count += 1
     return total / count
 
 
 def metric_min(series, getter=default_getter):
     best = None
-    for rmsg in series:
-        v = getter(rmsg)
+    for bmsg in series:
+        v = getter(bmsg)
         if best is None or v < best:
             best = v
     return best
@@ -51,13 +51,36 @@ def metric_min(series, getter=default_getter):
 
 def metric_max(series, getter=default_getter):
     best = None
-    for rmsg in series:
-        v = getter(rmsg)
+    for bmsg in series:
+        v = getter(bmsg)
         if best is None or v > best:
             best = v
     return best
 
 
 def metric_final(series, getter=default_getter):
-    rmsg = series[-1]
-    return getter(rmsg)
+    bmsg = series[-1]
+    return getter(bmsg)
+
+
+def min_max_total_avg(series, getter=default_getter):
+    if not series:
+        return None, None, None
+
+    total = 0.0
+    the_min = None
+    the_max = None
+    count = 0
+    for bmsg in series:
+        v = getter(bmsg)
+        if count == 0:
+            the_min = v
+            the_max = v
+        else:
+            if the_min > v:
+                the_min = v
+            if the_max < v:
+                the_max = v
+        total += v
+        count += 1
+    return the_min, the_max, total, total / count

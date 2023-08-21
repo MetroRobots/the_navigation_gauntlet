@@ -1,11 +1,11 @@
 import argparse
 import pathlib
-from gauntlet_analysis.trial_bag import TrialBag
-from navigation_metrics import get_metrics, global_metric_search
+from . import FlexibleBag, get_metrics, global_metric_search
 
 
 def compute_metrics(bag_path, ignore_errors=False):
-    bag = TrialBag(bag_path, read_everything=True)
+    """Compute all known metrics for the given bag and return results as a dictionary"""
+    bag = FlexibleBag(bag_path, read_everything=True)
     computed_values = {}
 
     for name, metric in get_metrics().items():

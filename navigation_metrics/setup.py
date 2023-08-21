@@ -17,5 +17,5 @@ setup(
     description='Tools for computing a collection of metrics about navigation behavior',
     license='BSD',
     tests_require=['pytest'],
-    entry_points={'console_scripts': []},
+    entry_points={'console_scripts': ['analyze_bag = navigation_metrics.analyze_bag:main']},
 )

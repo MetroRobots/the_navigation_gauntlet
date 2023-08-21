@@ -9,8 +9,10 @@ from std_msgs.msg import Float32
 
 from polygon_utils.shortest_path import shortest_path, make_point
 
-from .metric import RecordedMessage, nav_metric, metric_conversion_function
-from .util import pose_stamped_distance, pose_distance, point_distance, metric_min, average, metric_final
+from navigation_metrics.metric import nav_metric
+from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
+from navigation_metrics.util import pose_stamped_distance, pose_distance, point_distance, metric_final
+from navigation_metrics.util import min_max_total_avg
 
 
 def vector_to_point(v):
@@ -28,7 +30,7 @@ def transform_to_pose(transform):
     return pose
 
 
-@metric_conversion_function('/path')
+@flexible_bag_converter_function('/path')
 def tf_to_pose(data, period=0.1):
     seq = []
     start_t = data['/trial_goal_pose'][0].t
@@ -41,12 +43,12 @@ def tf_to_pose(data, period=0.1):
         elif t > end_t:
             break
         for transform in msg.transforms:
-            if transform.header.frame_id == 'map' and transform.child_frame_id == 'base_link':
+            if transform.header.frame_id == 'odom' and transform.child_frame_id == 'base_footprint':
                 if last_t is None or (t - last_t) >= period:
                     ps = PoseStamped()
                     ps.header = transform.header
                     ps.pose = transform_to_pose(transform.transform)
-                    seq.append(RecordedMessage(t, ps))
+                    seq.append(BagMessage(t, ps))
                     last_t = t
     return seq
 
@@ -63,32 +65,32 @@ def pose_to_pose2d(msg):
     return pose2d
 
 
-@metric_conversion_function('/path2d')
+@flexible_bag_converter_function('/path2d')
 def convert_pose_to_pose2d(data):
     seq = []
     for t, msg in data['/path']:
         pose2d = pose_to_pose2d(msg)
-        seq.append(RecordedMessage(t, pose2d))
+        seq.append(BagMessage(t, pose2d))
     return seq
 
 
-@metric_conversion_function('/trial_goal_pose_2d')
+@flexible_bag_converter_function('/trial_goal_pose_2d')
 def convert_goal_pose_to_pose2d(data):
     seq = []
     for t, msg in data['/trial_goal_pose']:
         pose2d = pose_to_pose2d(msg)
-        seq.append(RecordedMessage(t, pose2d))
+        seq.append(BagMessage(t, pose2d))
     return seq
 
 
-@metric_conversion_function('/distance_to_goal')
+@flexible_bag_converter_function('/distance_to_goal')
 def pose_to_goal_distance(data):
     goal = data['/trial_goal_pose'][0].msg
     seq = []
     for t, msg in data['/path']:
         fmsg = Float32()
         fmsg.data = pose_stamped_distance(goal, msg)
-        seq.append(RecordedMessage(t, fmsg))
+        seq.append(BagMessage(t, fmsg))
     return seq
 
 
@@ -105,13 +107,11 @@ def angle_to_goal(data):
 
 
 @nav_metric
-def min_distance_to_goal(data):
-    return metric_min(data['/distance_to_goal'])
-
-
-@nav_metric
-def avg_distance_to_goal(data):
-    return average(data['/distance_to_goal'])
+def distance_to_goal_metrics(data):
+    the_min, the_max, _, avg = min_max_total_avg(data['/distance_to_goal'])
+    return {'minimum_distance_to_goal': the_min,
+            'maximum_distance_to_goal': the_max,
+            'average_distance_to_goal': avg}
 
 
 @nav_metric
@@ -162,11 +162,11 @@ def interpolate_path(start_pose, path, goal_pose):
     return path_msg
 
 
-@metric_conversion_function('/optimal_path')
+@flexible_bag_converter_function('/optimal_path')
 def shortest_path_calculation(data):
     polygons = data['/polygon_map'][0].msg
-    start_rmsg = data['/path'][0]
-    start_pose = start_rmsg.msg
+    start_bmsg = data['/path'][0]
+    start_pose = start_bmsg.msg
     goal_pose = data['/trial_goal_pose'][0].msg
 
     start_pt = make_point(start_pose.pose.position.x, start_pose.pose.position.y)
@@ -176,7 +176,7 @@ def shortest_path_calculation(data):
 
     path = interpolate_path(start_pose, path2d, goal_pose)
 
-    seq = [RecordedMessage(start_rmsg.t, path)]
+    seq = [BagMessage(start_bmsg.t, path)]
     return seq
 
 

@@ -2,11 +2,12 @@ from std_msgs.msg import Float32
 
 from polygon_utils.shapely_lib import polygon_from_msg, point_from_msg
 
-from .metric import RecordedMessage, nav_metric, metric_conversion_function
-from .util import metric_min, metric_max, average
+from navigation_metrics.metric import nav_metric
+from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
+from navigation_metrics.util import min_max_total_avg
 
 
-@metric_conversion_function('/obstacle_clearance')
+@flexible_bag_converter_function('/obstacle_clearance')
 def calculate_obstacle_clearance(data):
     polygons_msg = data['/polygon_map'][0].msg
     spolygons = [polygon_from_msg(poly) for poly in polygons_msg.polygons]
@@ -17,23 +18,16 @@ def calculate_obstacle_clearance(data):
         ds = [spoly.exterior.distance(spoint) for spoly in spolygons]
         fmsg = Float32()
         fmsg.data = min(ds)
-        seq.append(RecordedMessage(t, fmsg))
+        seq.append(BagMessage(t, fmsg))
     return seq
 
 
 @nav_metric
-def minimum_clearing_distance(data):
-    return metric_min(data['/obstacle_clearance'])
-
-
-@nav_metric
-def average_clearing_distance(data):
-    return average(data['/obstacle_clearance'])
-
-
-@nav_metric
-def maximum_clearing_distance(data):
-    return metric_max(data['/obstacle_clearance'])
+def clearing_distance_metrics(data):
+    the_min, the_max, _, avg = min_max_total_avg(data['/obstacle_clearance'])
+    return {'minimum_clearing_distance': the_min,
+            'maximum_clearing_distance': the_max,
+            'average_clearing_distance': avg}
 
 
 @nav_metric

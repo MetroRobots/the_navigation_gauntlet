@@ -1,15 +1,15 @@
 from action_msgs.msg import GoalStatus
 
-from .metric import RecordedMessage, nav_metric, metric_conversion_function
+from navigation_metrics.metric import nav_metric
+from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
 
 
-@metric_conversion_function('/trial_goal_pose')
+@flexible_bag_converter_function('/trial_goal_pose')
 def convert_to_trial(data):
     goal_pose_msgs = data['/goal_pose']
     if goal_pose_msgs:
-        start_rmsg = goal_pose_msgs[0]
-        seq = [RecordedMessage(start_rmsg.t, start_rmsg.msg)]
-        print(seq)
+        start_bmsg = goal_pose_msgs[0]
+        seq = [BagMessage(start_bmsg.t, start_bmsg.msg)]
         return seq
 
 
