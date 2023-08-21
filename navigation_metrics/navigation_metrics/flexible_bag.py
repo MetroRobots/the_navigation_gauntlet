@@ -60,8 +60,8 @@ class FlexibleBag:
             self.topics_by_type[tmeta.type].add(tmeta.name)
 
         # Cache all the data
-        if initial_cache or write_mods:
-            self._cache_topics(list(self.type_map.keys()))
+        if initial_cache:
+            self.read_remaining_topics()
 
     def __del__(self):
         """ Destructor to write data to file """
@@ -180,12 +180,21 @@ class FlexibleBag:
         for frame in frames:
             yield tuple(frame[topic] for topic in topics)
 
+    def read_remaining_topics(self):
+        topics = set(self.type_map.keys())
+        for topic in self.cached_topics:
+            if topic in topics:
+                topics.remove(topic)
+        self._cache_topics(list(topics))
+
     def get_topics_by_type(self, msg_type_s):
         """Returns a list of topics whose type matches the string passed in"""
         return sorted(self.topics_by_type[msg_type_s])
 
     def save(self, output_path):
         """Save results to file"""
+        self.read_remaining_topics()
+
         writer = SequentialWriter()
         writer.open(StorageOptions(str(output_path), self.storage_options.storage_id), self.converter_options)
         for tmeta in self.topic_types:

@@ -5,7 +5,7 @@ from . import FlexibleBag, MissingTopicException, get_metrics, global_metric_sea
 
 def compute_metrics(bag_path, ignore_errors=False):
     """Compute all known metrics for the given bag and return results as a dictionary"""
-    bag = FlexibleBag(bag_path, read_everything=True)
+    bag = FlexibleBag(bag_path, write_mods=False)
     computed_values = {}
 
     for name, metric in get_metrics().items():
