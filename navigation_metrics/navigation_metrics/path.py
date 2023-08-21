@@ -10,7 +10,7 @@ from std_msgs.msg import Float32
 from polygon_utils.shortest_path import shortest_path, make_point
 
 from .metric import RecordedMessage, nav_metric, metric_conversion_function
-from .util import pose_stamped_distance, pose2d_distance, point_distance, metric_min, average, metric_final
+from .util import pose_stamped_distance, pose_distance, point_distance, metric_min, average, metric_final
 
 
 def vector_to_point(v):
@@ -67,6 +67,15 @@ def pose_to_pose2d(msg):
 def convert_pose_to_pose2d(data):
     seq = []
     for t, msg in data['/path']:
+        pose2d = pose_to_pose2d(msg)
+        seq.append(RecordedMessage(t, pose2d))
+    return seq
+
+
+@metric_conversion_function('/trial_goal_pose_2d')
+def convert_goal_pose_to_pose2d(data):
+    seq = []
+    for t, msg in data['/trial_goal_pose']:
         pose2d = pose_to_pose2d(msg)
         seq.append(RecordedMessage(t, pose2d))
     return seq
@@ -178,10 +187,11 @@ def efficiency(data):
     op = data['/optimal_path'][0].msg
     od = 0.0
     prev_pose = None
-    for pose in op.poses:
+    for pose_s in op.poses:
+        pose = pose_s.pose
         if prev_pose is None:
             prev_pose = pose
-        d, _ = pose2d_distance(pose, prev_pose)
+        d = pose_distance(pose, prev_pose)
         od += d
         prev_pose = pose
 

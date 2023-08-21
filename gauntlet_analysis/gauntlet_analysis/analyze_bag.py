@@ -4,6 +4,27 @@ from gauntlet_analysis.trial_bag import TrialBag
 from navigation_metrics import get_metrics, global_metric_search
 
 
+def compute_metrics(bag_path, ignore_errors=False):
+    bag = TrialBag(bag_path, read_everything=True)
+    computed_values = {}
+
+    for name, metric in get_metrics().items():
+        try:
+            m = metric(bag)
+        except Exception as e:
+            if ignore_errors:
+                computed_values[name] = str(e)
+                continue
+            else:
+                raise
+
+        if isinstance(m, dict):
+            computed_values.update(m)
+        else:
+            computed_values[name] = m
+    return computed_values
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('bag_path', type=pathlib.Path)
@@ -12,16 +33,15 @@ def main():
 
     global_metric_search()
 
-    bag = TrialBag(args.bag_path)
-    for name, metric in get_metrics().items():
-        try:
-            m = metric(bag)
-        except Exception:
-            if args.ignore_errors:
-                continue
-            else:
-                raise
-        print(name, m)
+    metrics = compute_metrics(args.bag_path, args.ignore_errors)
+    max_l = max(len(k) for k in metrics.keys())
+    template = '{name:' + str(max_l + 1) + 's} {v_s:8}'
+    for name, value in metrics.items():
+        if isinstance(value, float):
+            v_s = f'{value:.2f}'
+        else:
+            v_s = str(value)
+        print(template.format(name=name, v_s=v_s))
 
 
 if __name__ == '__main__':

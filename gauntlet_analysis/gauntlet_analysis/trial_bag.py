@@ -3,6 +3,7 @@ from rosbag2_py import StorageOptions, ConverterOptions, StorageFilter, TopicMet
 from rclpy.serialization import deserialize_message, serialize_message
 from rosidl_runtime_py.utilities import get_message
 from navigation_metrics import RecordedMessage, get_conversion_functions
+import collections
 import pathlib
 import tempfile
 import shutil
@@ -29,7 +30,11 @@ class TrialBag:
         reader = SequentialReader()
         reader.open(*self.bag_options)
         self.topic_types = reader.get_all_topics_and_types()
-        self.type_map = {tmeta.name: tmeta.type for tmeta in self.topic_types}
+        self.type_map = {}
+        self.topics_by_type = collections.defaultdict(list)
+        for tmeta in self.topic_types:
+            self.type_map[tmeta.name] = tmeta.type
+            self.topics_by_type[tmeta.type].append(tmeta.name)
 
         if write_mods or read_everything:
             self.read_topics(list(self.type_map.keys()))
@@ -124,6 +129,9 @@ class TrialBag:
             for topic in topics:
                 rmsgs.append(frame[topic])
             yield rmsgs
+
+    def get_topics_by_type(self, msg_type):
+        return self.topics_by_type[msg_type]
 
     def get_param(self, name, default_value=None):
         return self.parameters.get(name, default_value)

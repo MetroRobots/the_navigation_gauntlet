@@ -11,8 +11,9 @@ There are four core variables:
  * **Nav Config**
  * **Trial Config**
 
-The simulator package should have a simulator_bringup.launch.py file and provide two launch arguments:
+The simulator package should have a simulator_bringup.launch.py file and have three launch arguments:
  * `world` - The path to the [YamlWorld](YamlWorld.md) world configuration.
+ * `robot` - The name of a robot to launch
  * `gui` - Boolean to determine whether to display a GUI window for the simulator
 
 The simulator, robot and nav config packages should have `config/nav_gauntlet.yaml` defined. These files may contain a list of topics to record.

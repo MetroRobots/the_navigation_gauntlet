@@ -1,4 +1,5 @@
 from .basic import *  # noqa: F401, F403
+from .compute import *  # noqa: F401, F403
 from .obstacles import *  # noqa: F401, F403
 from .path import *  # noqa: F401, F403
 from .velocity import *  # noqa: F401, F403
