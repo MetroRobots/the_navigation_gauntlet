@@ -7,7 +7,8 @@ from geometry_msgs.msg import PoseStamped, Point, Pose, Pose2D
 from nav_2d_msgs.msg import Path2D, Pose2DStamped
 from std_msgs.msg import Float32
 
-from polygon_utils.shortest_path import shortest_path, make_point
+from polygon_utils import make_point
+from polygon_utils.shortest_path import shortest_path
 
 from navigation_metrics.metric import nav_metric
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
@@ -37,13 +38,16 @@ def tf_to_pose(data, period=0.1):
     end_t = data['/navigation_result'][0].t
     last_t = None
 
+    global_frame = data.get_parameter('global_frame', 'map')
+    robot_frame = data.get_parameter('robot_frame', 'base_link')
+
     for t, msg in data['/tf']:
         if t < start_t:
             continue
         elif t > end_t:
             break
         for transform in msg.transforms:
-            if transform.header.frame_id == 'odom' and transform.child_frame_id == 'base_footprint':
+            if transform.header.frame_id == global_frame and transform.child_frame_id == robot_frame:
                 if last_t is None or (t - last_t) >= period:
                     ps = PoseStamped()
                     ps.header = transform.header

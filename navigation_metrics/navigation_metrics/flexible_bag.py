@@ -3,6 +3,8 @@ from rosbag2_py import StorageOptions, StorageFilter, ConverterOptions, TopicMet
 from rclpy.serialization import deserialize_message, serialize_message
 from rosidl_runtime_py.utilities import get_message
 
+from .parameters import get_parameter
+
 import collections
 import pathlib
 import shutil
@@ -190,6 +192,9 @@ class FlexibleBag:
     def get_topics_by_type(self, msg_type_s):
         """Returns a list of topics whose type matches the string passed in"""
         return sorted(self.topics_by_type[msg_type_s])
+
+    def get_parameter(self, name, default_value=None, namespace=''):
+        return get_parameter(self.path, name, default_value, namespace)
 
     def save(self, output_path):
         """Save results to file"""
