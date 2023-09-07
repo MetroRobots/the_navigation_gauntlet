@@ -1,2 +1,2 @@
 Option to save bag
-Configuration file for bags (path frame)
+Include parameters in multidata
