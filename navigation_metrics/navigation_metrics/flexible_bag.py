@@ -189,6 +189,17 @@ class FlexibleBag:
                 topics.remove(topic)
         self._cache_topics(list(topics))
 
+    def get_messages_by_time(self, topic, target_time, limit=None):
+        matches = []
+
+        for bmsg in self[topic]:
+            dt = abs(bmsg.t - target_time)
+            if limit is None or dt < limit:
+                matches.append((dt, bmsg))
+
+        for dt, bmsg in sorted(matches):
+            yield bmsg
+
     def get_topics_by_type(self, msg_type_s):
         """Returns a list of topics whose type matches the string passed in"""
         return sorted(self.topics_by_type[msg_type_s])
