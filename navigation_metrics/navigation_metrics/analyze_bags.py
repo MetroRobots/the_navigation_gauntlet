@@ -25,8 +25,6 @@ def analyze_bags(folder_path):
     for bag_path in find_bags(folder_path):
         metrics = compute_metrics(bag_path, ignore_errors=True)
         data[bag_path] = metrics
-        if len(data) > 5:
-            break
 
     return data
 
@@ -69,8 +67,10 @@ def main():
         for v in values:
             if isinstance(v, bool):
                 v = 1 if v else 0
-            elif v is None or math.isnan(v):
+            elif v is None or (isinstance(v, float) and math.isnan(v)):
                 missing += 1
+                continue
+            elif isinstance(v, str):
                 continue
 
             if count == 0:
