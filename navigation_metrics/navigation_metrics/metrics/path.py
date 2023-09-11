@@ -107,7 +107,7 @@ def distance_to_goal(data):
 def angle_to_goal(data):
     goals = data['/trial_goal_pose_2d']
     path = data['/path2d']
-    return shortest_angular_distance(goals[0].msg.pose.theta, path[-1].msg.pose.theta)
+    return abs(shortest_angular_distance(goals[0].msg.pose.theta, path[-1].msg.pose.theta))
 
 
 @nav_metric
