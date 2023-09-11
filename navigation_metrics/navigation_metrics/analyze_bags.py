@@ -84,10 +84,12 @@ def main():
             total += v
             count += 1
 
-        row += [the_min, the_max, total / count, total, missing]
+        row += [the_min, the_max, total / max(1, count), total, count, missing]
         rows.append(row)
 
-    print(tabulate.tabulate(rows, headers=['name', 'min', 'max', 'average', 'total', 'missing'], tablefmt=tablefmt))
+    print(tabulate.tabulate(rows,
+                            headers=['name', 'min', 'max', 'average', 'total', 'count', 'missing'],
+                            tablefmt=tablefmt))
 
 
 if __name__ == '__main__':
