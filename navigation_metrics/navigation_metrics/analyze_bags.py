@@ -5,7 +5,7 @@ import tabulate
 import math
 
 from . import global_metric_search
-from .analyze_bag import compute_metrics
+from .analyze_bag import compute_metrics, ComputeMode
 
 
 def find_bags(folder_path):
@@ -20,10 +20,10 @@ def find_bags(folder_path):
                     queue.append(subpath)
 
 
-def analyze_bags(folder_path):
+def analyze_bags(folder_path, compute_mode):
     data = {}
     for bag_path in find_bags(folder_path):
-        metrics = compute_metrics(bag_path, ignore_errors=True)
+        metrics = compute_metrics(bag_path, ignore_errors=True, compute_mode=compute_mode)
         data[bag_path] = metrics
 
     return data
@@ -33,11 +33,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
     parser.add_argument('-s', '--table-style', default='tsv')
-    # parser.add_argument('-f', '--force-recompute', action='store_true')
+    parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode])
     args = parser.parse_args()
 
     global_metric_search()
-    data = analyze_bags(args.folder)
+    compute_mode = ComputeMode[args.compute_mode.upper()]
+    data = analyze_bags(args.folder, compute_mode)
 
     by_metrics = collections.defaultdict(list)
 

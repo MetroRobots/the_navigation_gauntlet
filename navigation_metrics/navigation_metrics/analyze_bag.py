@@ -1,23 +1,33 @@
 import argparse
 import pathlib
+from enum import IntEnum
 import yaml
 
 from . import FlexibleBag, MissingTopicException, get_metrics, global_metric_search
 from .parameters import get_all_parameters
 
 
-def compute_metrics(bag_path, ignore_errors=False, use_cache=True):
-    """Compute all known metrics for the given bag and return results as a dictionary"""
-    bag = FlexibleBag(bag_path, write_mods=False)
+class ComputeMode(IntEnum):
+    NOTHING = 1
+    NEEDED = 2
+    EVERYTHING = 3
 
+
+def compute_metrics(bag_path, ignore_errors=False, compute_mode=ComputeMode.NEEDED):
+    """Compute all known metrics for the given bag and return results as a dictionary"""
     assert bag_path.is_dir()
     cache_path = bag_path / 'navigation_metrics.yaml'
-    if use_cache and cache_path.exists():
+    if compute_mode != ComputeMode.EVERYTHING and cache_path.exists():
         computed_values = yaml.safe_load(open(cache_path))
         saved_names = computed_values.pop('saved_names', [])
     else:
         computed_values = {}
         saved_names = []
+
+    if compute_mode == ComputeMode.NOTHING:
+        return computed_values
+
+    bag = FlexibleBag(bag_path, write_mods=False)
 
     for name, metric in get_metrics().items():
         if name in computed_values or name in saved_names:
@@ -54,12 +64,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('bag_path', type=pathlib.Path)
     parser.add_argument('-i', '--ignore-errors', action='store_true')
-    parser.add_argument('-f', '--force-recompute', action='store_true')
+    parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode])
     args = parser.parse_args()
 
     global_metric_search()
 
-    metrics = compute_metrics(args.bag_path, args.ignore_errors, not args.force_recompute)
+    compute_mode = ComputeMode[args.compute_mode.upper()]
+    metrics = compute_metrics(args.bag_path, args.ignore_errors, compute_mode)
     if not metrics:
         print('No metrics computed.')
         return
