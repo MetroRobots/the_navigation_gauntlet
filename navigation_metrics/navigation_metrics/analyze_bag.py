@@ -3,6 +3,7 @@ import pathlib
 import yaml
 
 from . import FlexibleBag, MissingTopicException, get_metrics, global_metric_search
+from .parameters import get_all_parameters
 
 
 def compute_metrics(bag_path, ignore_errors=False, use_cache=True):
@@ -40,10 +41,11 @@ def compute_metrics(bag_path, ignore_errors=False, use_cache=True):
         else:
             computed_values[name] = m
 
-    if use_cache:
-        output_d = dict(computed_values)
-        output_d['saved_names'] = saved_names
-        yaml.safe_dump(output_d, open(cache_path, 'w'))
+    computed_values['parameters'] = get_all_parameters(bag_path)
+
+    output_d = dict(computed_values)
+    output_d['saved_names'] = saved_names
+    yaml.safe_dump(output_d, open(cache_path, 'w'))
 
     return computed_values
 
@@ -65,11 +67,23 @@ def main():
     max_l = max(len(k) for k in metrics.keys())
     template = '{name:' + str(max_l + 1) + 's} {v_s:8}'
     for name, value in metrics.items():
+        if name == 'parameters':
+            continue
+
         if isinstance(value, float):
             v_s = f'{value:.2f}'
         else:
             v_s = str(value)
         print(template.format(name=name, v_s=v_s))
+
+    if 'parameters' in metrics:
+        print('\nParameters:')
+        for name, value in metrics['parameters'].items():
+            if isinstance(value, float):
+                v_s = f'{value:.2f}'
+            else:
+                v_s = str(value)
+            print(template.format(name=name, v_s=v_s))
 
 
 if __name__ == '__main__':

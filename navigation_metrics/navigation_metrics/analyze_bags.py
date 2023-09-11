@@ -47,9 +47,13 @@ def main():
         row = {}
         row['name'] = str(path).replace(base_path, '')
         row.update(metrics)
+        params = row.pop('parameters', {})
+        row.update(params)
         rows.append(row)
 
-        for metric, value in metrics.items():
+        for metric, value in row.items():
+            if isinstance(value, str):
+                continue
             by_metrics[metric].append(value)
 
     tablefmt = args.table_style

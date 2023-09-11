@@ -1,2 +1,2 @@
 Option to save bag
-Include parameters in multidata
+Option to bypass all computation

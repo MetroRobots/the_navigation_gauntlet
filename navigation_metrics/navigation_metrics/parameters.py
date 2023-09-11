@@ -31,7 +31,7 @@ def _get_parent_dirs(cur_dir):
             folder = folder.parent
 
 
-def get_parameter(starting_path, name, default_value=None, namespace=''):
+def get_parameter_files(starting_path):
     if not isinstance(starting_path, pathlib.Path):
         starting_path = pathlib.Path(starting_path)
     if not starting_path.is_dir():
@@ -43,12 +43,32 @@ def get_parameter(starting_path, name, default_value=None, namespace=''):
                 _cached_parameters[folder] = yaml.safe_load(open(filepath))
             else:
                 _cached_parameters[folder] = None
-        if not _cached_parameters[folder]:
-            continue
-        level_params = _cached_parameters[folder]
+        if _cached_parameters[folder]:
+            yield _cached_parameters[folder]
+
+
+def get_parameter(starting_path, name, default_value=None, namespace=''):
+    for level_params in get_parameter_files(starting_path):
         if namespace and namespace in level_params:
             if name in level_params[namespace]:
                 return level_params[namespace]
         if name in level_params:
             return level_params[name]
     return default_value
+
+
+def _merge_into(parent, child):
+    for k, v in child.items():
+        if isinstance(v, dict):
+            if k not in parent:
+                parent[k] = {}
+            _merge_into(parent[k], v)
+        elif k not in parent:
+            parent[k] = v
+
+
+def get_all_parameters(starting_path):
+    all_params = {}
+    for level_params in get_parameter_files(starting_path):
+        _merge_into(all_params, level_params)
+    return all_params
