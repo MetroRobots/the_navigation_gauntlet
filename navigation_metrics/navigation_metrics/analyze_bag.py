@@ -64,7 +64,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('bag_path', type=pathlib.Path)
     parser.add_argument('-i', '--ignore-errors', action='store_true')
-    parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode])
+    parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode], default='needed')
     args = parser.parse_args()
 
     global_metric_search()

@@ -33,7 +33,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
     parser.add_argument('-s', '--table-style', default='tsv')
-    parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode])
+    parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode], default='needed')
     args = parser.parse_args()
 
     global_metric_search()
