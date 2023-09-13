@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'navigation_metrics'
+package_name = 'navigation_metrics_viz'
 
 setup(
     name=package_name,
@@ -14,10 +14,8 @@ setup(
     zip_safe=True,
     maintainer='David V. Lu!!',
     maintainer_email='davidvlu@gmail.com',
-    description='Tools for computing a collection of metrics about navigation behavior',
+    description='Tools for visualizing the navigation_metrics',
     license='BSD',
     tests_require=['pytest'],
-    entry_points={'console_scripts': ['analyze_bag = navigation_metrics.analyze_bag:main',
-                                      'analyze_bags = navigation_metrics.analyze_bags:main',
-                                      ]},
+    entry_points={'console_scripts': ['plot = navigation_metrics_viz.plot:main']},
 )

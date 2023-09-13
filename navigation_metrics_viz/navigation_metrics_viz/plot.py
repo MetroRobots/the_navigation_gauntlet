@@ -5,8 +5,8 @@ from matplotlib.pyplot import subplots, show
 import pathlib
 import re
 
-from .analyze_bag import ComputeMode
-from .analyze_bags import analyze_bags
+from navigation_metrics.analyze_bag import ComputeMode
+from navigation_metrics.analyze_bags import analyze_bags
 
 MOD_P = re.compile(r'^([\w_]+)(%)(.*)$')
 
