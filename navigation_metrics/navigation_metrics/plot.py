@@ -3,20 +3,71 @@ import collections
 import click
 from matplotlib.pyplot import subplots, show
 import pathlib
+import re
 
 from .analyze_bag import ComputeMode
 from .analyze_bags import analyze_bags
 
+MOD_P = re.compile(r'^([\w_]+)(%)(.*)$')
 
-def get_value(metric_d, name, allow_str=False):
-    value = None
-    if name in metric_d:
-        value = metric_d[name]
-    elif name in metric_d.get('parameters', {}):
-        value = metric_d['parameters'][name]
 
-    if allow_str or not isinstance(value, str):
+class Dimension:
+    def __init__(self, full_name, allow_str=False):
+        self.full_name = full_name
+        self.allow_str = False
+        self.count = 0
+        self.alter_fne = None
+        self.op = None
+
+        if not self.full_name:
+            self.name = ''
+            return
+        m = MOD_P.match(self.full_name)
+        if m:
+            self.name, self.op, param = m.groups()
+            self.num = float(param)
+            self.alter_fne = lambda d: d - d % self.num
+        else:
+            self.name = self.full_name
+
+    def get_value(self, metric_d):
+        if not self.full_name:
+            return
+
+        if self.name in metric_d:
+            value = metric_d[self.name]
+        elif self.name in metric_d.get('parameters', {}):
+            value = metric_d['parameters'][self.name]
+        else:
+            value = None
+
+        if not self.allow_str and isinstance(value, str):
+            value = None
+
+        if self.alter_fne and value:
+            try:
+                value = self.alter_fne(value)
+            except Exception:
+                raise
+
+        if value is not None:
+            self.count += 1
+
         return value
+
+    def format_name(self, value):
+        if not self.name:
+            return None
+        elif self.op is None:
+            return f'{self.name} = {value}'
+        elif self.op == '%':
+            if value is not None:
+                return f'{self.name} ∈ [{value:.2f}, {(value + self.num):.2f}]'
+            else:
+                return f'{self.name} = {value}'
+
+    def __repr__(self):
+        return self.name
 
 
 def main():
@@ -32,37 +83,28 @@ def main():
 
     xs = collections.defaultdict(lambda: collections.defaultdict(list))
     ys = collections.defaultdict(lambda: collections.defaultdict(list))
-    counts = collections.Counter()
-    counts[args.x] = 0  # Ensures values are in counter for debug printing
-    counts[args.y] = 0
+
+    dimensions = {
+        'x': Dimension(args.x),
+        'y': Dimension(args.y),
+        'p': Dimension(args.plots_axis, allow_str=True),
+        's': Dimension(args.series_axis, allow_str=True),
+    }
 
     for path, metrics in sorted(data.items()):
-        x_v = get_value(metrics, args.x)
-        y_v = get_value(metrics, args.y)
-        if args.plots_axis:
-            p_v = get_value(metrics, args.plots_axis, allow_str=True)
-        else:
-            p_v = None
-        if args.series_axis:
-            s_v = get_value(metrics, args.series_axis, allow_str=True)
-        else:
-            s_v = None
+        values = {d: dimension.get_value(metrics) for d, dimension in dimensions.items()}
 
-        if x_v:
-            counts[args.x] += 1
-        if y_v:
-            counts[args.y] += 1
-        if p_v:
-            counts[args.plots_axis] += 1
-        if s_v:
-            counts[args.series_axis] += 1
+        if values['x'] is not None and values['y'] is not None:
+            p_v = values['p']
+            s_v = values['s']
+            xs[p_v][s_v].append(values['x'])
+            ys[p_v][s_v].append(values['y'])
 
-        if x_v is not None and y_v is not None:
-            xs[p_v][s_v].append(x_v)
-            ys[p_v][s_v].append(y_v)
-
-    for dimension, count in counts.most_common():
-        click.secho(f'Dimension "{dimension}" found in {count}/{len(data)} bags', fg='blue' if count else 'red')
+    for dimension in dimensions.values():
+        if not dimension.full_name:
+            continue
+        click.secho(f'Dimension "{dimension}" found in {dimension.count}/{len(data)} bags',
+                    fg='blue' if dimension.count else 'red')
 
     if not xs and not ys:
         return
@@ -75,15 +117,10 @@ def main():
         axes = ax_v
 
     for p_v, ax in zip(xs.keys(), axes):
-        if args.plots_axis:
-            ax.set_title(f'{args.plots_axis} = {p_v}')
+        ax.set_title(dimensions['p'].format_name(p_v))
 
-        for s_v in xs[p_v]:
-            if args.series_axis:
-                label = f'{args.series_axis} = {s_v}'
-            else:
-                label = None
-
+        for s_v in sorted(xs[p_v]):
+            label = dimensions['s'].format_name(s_v)
             ax.plot(xs[p_v][s_v], ys[p_v][s_v], 'o', label=label)
         if args.series_axis:
             ax.legend()
