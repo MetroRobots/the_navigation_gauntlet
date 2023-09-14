@@ -7,7 +7,8 @@ setup(
     version='0.0.0',
     packages=[package_name],
     data_files=[
-        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
+        ('share/ament_index/resource_index/packages',
+         ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=['setuptools'],
@@ -21,6 +22,7 @@ setup(
         'console_scripts': [
             'plot = navigation_metrics_viz.plot:main',
             'plot_bag = navigation_metrics_viz.plot_bag:main',
+            'viz_trial = navigation_metrics_viz.viz_trial:main',
         ]
     },
 )
