@@ -9,6 +9,7 @@ import collections
 import pathlib
 import shutil
 import tempfile
+import yaml
 
 # Bag Message type for pairing a message with the floating point time it was recorded in the bag file
 BagMessage = collections.namedtuple('BagMessage', 't msg')
@@ -64,6 +65,9 @@ class FlexibleBag:
         # Cache all the data
         if initial_cache:
             self.read_remaining_topics()
+
+        # Get metadata
+        self.metadata = yaml.safe_load(open(self.path / 'metadata.yaml'))['rosbag2_bagfile_information']
 
     def __del__(self):
         """ Destructor to write data to file """
@@ -206,6 +210,9 @@ class FlexibleBag:
 
     def get_parameter(self, name, default_value=None, namespace=''):
         return get_parameter(self.path, name, default_value, namespace)
+
+    def get_start_time(self):
+        return self.metadata['starting_time']['nanoseconds_since_epoch'] / 1e9
 
     def save(self, output_path):
         """Save results to file"""
