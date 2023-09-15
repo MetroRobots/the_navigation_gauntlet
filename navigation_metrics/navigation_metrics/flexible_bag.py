@@ -99,7 +99,10 @@ class FlexibleBag:
             return self.read_multiple_topics(arg)
 
     def __setitem__(self, topic, sequence):
-        if topic in self.type_map:
+        self.set_topic_sequence(topic, sequence)
+
+    def set_topic_sequence(self, topic, sequence, allow_overwrite=False):
+        if topic in self.type_map and not allow_overwrite:
             raise RuntimeError('Topic already contained in bag')
         elif not sequence:
             raise RuntimeError('Sequence empty and cannot determine msg type')
@@ -119,12 +122,12 @@ class FlexibleBag:
         """
         if topic in self.new_topics:
             # New topic
-            return self.new_topics[topic]
+            return list(self.new_topics[topic])
         elif topic in self.type_map:
             # Existing topic
             if topic not in self.cached_topics:
                 self._cache_topics([topic])
-            return self.cached_topics[topic]
+            return list(self.cached_topics[topic])
         elif topic in FlexibleBag.conversion_functions:
             # Topic to be converted
             fne = FlexibleBag.conversion_functions[topic]
@@ -132,7 +135,7 @@ class FlexibleBag:
             if result is None:
                 raise MissingTopicException(topic)
             self[topic] = result
-            return result
+            return list(result)
         else:
             raise MissingTopicException(topic)
 
