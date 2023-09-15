@@ -10,10 +10,14 @@ from .dimension import Dimension
 
 
 def find_bags(folder_path):
-    queue = [folder_path.resolve()]
+    initial = folder_path.resolve()
+    if (initial / 'metadata.yaml').exists():
+        yield initial
+
+    queue = [initial]
     while queue:
         folder = queue.pop(0)
-        for subpath in folder.glob('*'):
+        for subpath in folder.iterdir():
             if subpath.is_dir():
                 if (subpath / 'metadata.yaml').exists():
                     yield subpath
