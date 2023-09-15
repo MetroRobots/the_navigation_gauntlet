@@ -21,7 +21,17 @@ def find_endpoint(data):
     if not goal_pose_msgs or not cmds:
         return
     goal = goal_pose_msgs[0].msg
-    last_cmd_t = cmds[-1].t
+
+    # Find last active cmd_vel
+    i = len(cmds) - 1
+    while i >= 0:
+        t, msg = cmds[i]
+        if abs(msg.linear.x) < 1e-2 and abs(msg.angular.z) < 1e-2:
+            i -= 1
+        else:
+            break
+
+    last_cmd_t = cmds[i + 1].t
 
     global_frame = data.get_parameter('global_frame', 'map')
     robot_frame = data.get_parameter('robot_frame', 'base_link')
@@ -40,6 +50,16 @@ def find_endpoint(data):
 
                 seq = [BagMessage(t, new_msg)]
                 return seq
+
+
+@nav_metric
+def time_to_start(data):
+    goals = data['/trial_goal_pose']
+    goal_t = goals[0].t
+    cmds = data['/cmd_vel']
+    for t, cmd in cmds:
+        if cmd.linear.x != 0.0 and cmd.angular.z != 0.0:
+            return t - goal_t
 
 
 @nav_metric
