@@ -66,6 +66,13 @@ def main():
             exs.append(t - t0)
             eys.append(0)
     ax.scatter(exs, eys, marker='x', color='red')
+    exs = []
+    eys = []
+    if '/scout_base/estart' in bag:
+        for t, msg in bag['/scout_base/estart']:
+            exs.append(t - t0)
+            eys.append(0)
+    ax.scatter(exs, eys, marker='$o$', color='blue')
 
     for dimension in args.dimension:
         d = Datum(dimension)
