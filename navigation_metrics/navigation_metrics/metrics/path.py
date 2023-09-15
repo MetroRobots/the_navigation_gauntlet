@@ -12,7 +12,7 @@ from polygon_utils.shortest_path import shortest_path
 
 from navigation_metrics.metric import nav_metric
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
-from navigation_metrics.util import pose_stamped_distance, pose_distance, point_distance, metric_final
+from navigation_metrics.util import pose_stamped_distance, pose2d_distance, point_distance, metric_final
 from navigation_metrics.util import min_max_total_avg
 
 
@@ -133,7 +133,7 @@ def path_length(data):
 
 
 @nav_metric
-def optimum_efficiency(data):
+def straight_line_efficiency(data):
     pl = path_length(data)
     path = data['/path']
     min_d = pose_stamped_distance(path[-1].msg, path[0].msg)
@@ -166,19 +166,22 @@ def interpolate_path(start_pose, path, goal_pose):
     return path_msg
 
 
-@flexible_bag_converter_function('/optimal_path')
+@flexible_bag_converter_function('/optimum_path')
 def shortest_path_calculation(data):
-    polygons = data['/polygon_map'][0].msg
     start_bmsg = data['/path'][0]
     start_pose = start_bmsg.msg
-    goal_pose = data['/trial_goal_pose'][0].msg
+    end_pose = data['/path'][-1].msg
 
     start_pt = make_point(start_pose.pose.position.x, start_pose.pose.position.y)
-    goal_pt = make_point(goal_pose.pose.position.x, goal_pose.pose.position.y)
+    goal_pt = make_point(end_pose.pose.position.x, end_pose.pose.position.y)
 
-    path2d = shortest_path(polygons, start_pt, goal_pt)
+    if '/polygon_map' in data:
+        polygons = data['/polygon_map'][0].msg
+        path2d = shortest_path(polygons, start_pt, goal_pt)
+    else:
+        path2d = [start_pt, goal_pt]
 
-    path = interpolate_path(start_pose, path2d, goal_pose)
+    path = interpolate_path(start_pose, path2d, end_pose)
 
     seq = [BagMessage(start_bmsg.t, path)]
     return seq
@@ -188,14 +191,13 @@ def shortest_path_calculation(data):
 def efficiency(data):
     pl = path_length(data)
 
-    op = data['/optimal_path'][0].msg
+    op = data['/optimum_path'][0].msg
     od = 0.0
     prev_pose = None
-    for pose_s in op.poses:
-        pose = pose_s.pose
+    for pose in op.poses:
         if prev_pose is None:
             prev_pose = pose
-        d = pose_distance(pose, prev_pose)
+        d, _ = pose2d_distance(pose, prev_pose)
         od += d
         prev_pose = pose
 
