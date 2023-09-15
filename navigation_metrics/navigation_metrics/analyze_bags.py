@@ -21,10 +21,10 @@ def find_bags(folder_path):
                     queue.append(subpath)
 
 
-def analyze_bags(folder_path, compute_mode):
+def analyze_bags(folder_path, compute_mode, metric_names=None):
     data = {}
     for bag_path in find_bags(folder_path):
-        metrics = compute_metrics(bag_path, ignore_errors=True, compute_mode=compute_mode)
+        metrics = compute_metrics(bag_path, metric_names, ignore_errors=True, compute_mode=compute_mode)
         data[bag_path] = metrics
 
     return data
@@ -42,7 +42,6 @@ def main():
 
     global_metric_search()
     compute_mode = ComputeMode[args.compute_mode.upper()]
-    data = analyze_bags(args.folder, compute_mode)
 
     row_sets = collections.defaultdict(list)
     by_metrics = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -56,6 +55,8 @@ def main():
         if args.include_dimensions:
             raise RuntimeError("Please don't use include and skip dimensions")
         my_metrics = [metric for metric in get_metrics().keys() if metric not in args.skip_dimensions]
+
+    data = analyze_bags(args.folder, compute_mode, my_metrics)
 
     base_path = str(args.folder.resolve()) + '/'
     for path, metrics in sorted(data.items()):

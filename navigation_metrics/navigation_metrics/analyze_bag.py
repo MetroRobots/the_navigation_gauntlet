@@ -13,7 +13,7 @@ class ComputeMode(IntEnum):
     EVERYTHING = 3
 
 
-def compute_metrics(bag_path, ignore_errors=False, compute_mode=ComputeMode.NEEDED):
+def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mode=ComputeMode.NEEDED):
     """Compute all known metrics for the given bag and return results as a dictionary"""
     assert bag_path.is_dir()
     cache_path = bag_path / 'navigation_metrics.yaml'
@@ -27,9 +27,14 @@ def compute_metrics(bag_path, ignore_errors=False, compute_mode=ComputeMode.NEED
     if compute_mode == ComputeMode.NOTHING:
         return computed_values
 
+    if metric_names is None:
+        metrics = get_metrics()
+    else:
+        metrics = {name: metric for name, metric in get_metrics().items() if name in metric_names}
+
     bag = FlexibleBag(bag_path, write_mods=False)
 
-    for name, metric in get_metrics().items():
+    for name, metric in metrics.items():
         if name in computed_values or name in saved_names:
             continue
 
@@ -70,7 +75,7 @@ def main():
     global_metric_search()
 
     compute_mode = ComputeMode[args.compute_mode.upper()]
-    metrics = compute_metrics(args.bag_path, args.ignore_errors, compute_mode)
+    metrics = compute_metrics(args.bag_path, ignore_errors=args.ignore_errors, compute_mode=compute_mode)
     if not metrics:
         print('No metrics computed.')
         return
