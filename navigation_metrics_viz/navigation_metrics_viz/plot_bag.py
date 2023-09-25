@@ -3,7 +3,7 @@ import collections
 from matplotlib.pyplot import subplots, show
 import pathlib
 
-from navigation_metrics import FlexibleBag
+from navigation_metrics import FlexibleBag, global_metric_search
 
 
 class Datum:
@@ -26,19 +26,11 @@ class Datum:
         return seq
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('bagfiles', metavar='bagfile', type=pathlib.Path, nargs='+')
-    parser.add_argument('-x')
-    parser.add_argument('-y')
-    args = parser.parse_args()
-
+def plot(bag_paths, datums):
+    global_metric_search()
     xs = collections.defaultdict(lambda: collections.defaultdict(list))
     ys = collections.defaultdict(lambda: collections.defaultdict(list))
-
-    datums = [Datum(args.x), Datum(args.y)]
-
-    for bag_path in args.bagfiles:
+    for bag_path in bag_paths:
         bag = FlexibleBag(bag_path, write_mods=False)
         x, y = [datum.get_sequence(bag) for datum in datums]
         xs[None][bag_path.stem] = x
@@ -54,11 +46,21 @@ def main():
     for p_v, ax in zip(xs.keys(), axes):
         for s_v in sorted(xs[p_v]):
             ax.plot(xs[p_v][s_v], ys[p_v][s_v], '.-', label=str(s_v))
-        if len(args.bagfiles) > 1:
+        if len(bag_paths) > 1:
             ax.legend()
-        ax.set_xlabel(args.x)
-        ax.set_ylabel(args.y)
+        ax.set_xlabel(datums[0].full_name)
+        ax.set_ylabel(datums[1].full_name)
     show()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('bagfiles', metavar='bagfile', type=pathlib.Path, nargs='+')
+    parser.add_argument('-x')
+    parser.add_argument('-y')
+    args = parser.parse_args()
+    datums = [Datum(args.x), Datum(args.y)]
+    plot(args.bagfiles, datums)
 
 
 if __name__ == '__main__':
