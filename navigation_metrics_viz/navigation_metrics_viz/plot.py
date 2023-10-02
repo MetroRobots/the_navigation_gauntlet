@@ -58,7 +58,11 @@ def main():
     for p_v, ax in zip(xs.keys(), axes):
         ax.set_title(dimensions['p'].format_name(p_v))
 
-        for s_v in sorted(xs[p_v]):
+        try:
+            ordered_s = sorted(xs[p_v])
+        except TypeError:
+            ordered_s = list(xs[p_v])
+        for s_v in ordered_s:
             label = dimensions['s'].format_name(s_v)
             ax.plot(xs[p_v][s_v], ys[p_v][s_v], 'o', label=label)
         if args.series_axis:

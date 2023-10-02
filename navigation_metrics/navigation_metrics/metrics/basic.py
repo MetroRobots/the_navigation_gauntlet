@@ -19,6 +19,8 @@ def time_to_start(data):
     goal_t = goals[0].t
     cmds = data['/cmd_vel']
     for t, cmd in cmds:
+        if t < goal_t:
+            continue
         if cmd.linear.x != 0.0 and cmd.angular.z != 0.0:
             return t - goal_t
 

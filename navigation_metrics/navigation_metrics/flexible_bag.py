@@ -43,6 +43,7 @@ class FlexibleBag:
     # We maintain a static dictionary of conversion functions, where the key is a topic name
     # and the value is a function returning a list of BagMessages to associate with that topic
     conversion_functions = {}
+    type_hints = {}
 
     def __init__(self, path, storage_id='sqlite3', serialization_format='cdr', write_mods=True, initial_cache=False):
         self.path = path
@@ -105,10 +106,13 @@ class FlexibleBag:
         if topic in self.type_map and not allow_overwrite:
             raise RuntimeError('Topic already contained in bag')
         elif not sequence:
-            raise RuntimeError('Sequence empty and cannot determine msg type')
-        self.new_topics[topic] = sequence
+            if topic not in self.type_hints:
+                raise RuntimeError(f'Sequence empty and cannot determine msg type for {topic}')
+            msgtype = self.type_hints[topic]
+        else:
+            msgtype = get_message_name(sequence[0].msg)
 
-        msgtype = get_message_name(sequence[0].msg)
+        self.new_topics[topic] = sequence
         tmeta = TopicMetadata(name=topic, type=msgtype,
                               serialization_format=self.converter_options.output_serialization_format)
 
@@ -251,8 +255,10 @@ class FlexibleBag:
 
 
 # Decorator function for adding conversion functions
-def flexible_bag_converter_function(topic):
+def flexible_bag_converter_function(topic, type_hint=None):
     def actual_decorator(f):
         FlexibleBag.conversion_functions[topic] = f
+        if type_hint:
+            FlexibleBag.type_hints[topic] = type_hint
         return f
     return actual_decorator
