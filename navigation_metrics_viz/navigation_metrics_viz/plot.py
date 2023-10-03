@@ -8,6 +8,7 @@ from navigation_metrics.analyze_bag import ComputeMode
 from navigation_metrics.analyze_bags import analyze_bags
 from navigation_metrics.dimension import Dimension
 
+
 def should_filter(metrics, d_filters):
     for d in d_filters:
         f_v = d.get_value(metrics)
