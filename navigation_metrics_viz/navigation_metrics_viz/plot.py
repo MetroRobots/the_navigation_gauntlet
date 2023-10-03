@@ -8,6 +8,12 @@ from navigation_metrics.analyze_bag import ComputeMode
 from navigation_metrics.analyze_bags import analyze_bags
 from navigation_metrics.dimension import Dimension
 
+def should_filter(metrics, d_filters):
+    for d in d_filters:
+        f_v = d.get_value(metrics)
+        if f_v:
+            return True
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -16,6 +22,7 @@ def main():
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
     parser.add_argument('-p', '--plots-axis')
     parser.add_argument('-s', '--series-axis')
+    parser.add_argument('-f', '--filter-axes', nargs='*', default=[])
     args = parser.parse_args()
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
@@ -29,8 +36,15 @@ def main():
         'p': Dimension(args.plots_axis, allow_str=True),
         's': Dimension(args.series_axis, allow_str=True),
     }
+    d_filters = []
+    for filter_s in args.filter_axes:
+        d = Dimension(filter_s, allow_str=True)
+        d_filters.append(d)
 
     for path, metrics in sorted(data.items()):
+        if d_filters and should_filter(metrics, d_filters):
+            continue
+
         values = {d: dimension.get_value(metrics) for d, dimension in dimensions.items()}
 
         if values['x'] is not None and values['y'] is not None:

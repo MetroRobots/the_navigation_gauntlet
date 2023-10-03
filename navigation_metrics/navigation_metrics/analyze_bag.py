@@ -24,6 +24,8 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
         computed_values = {}
         saved_names = []
 
+    computed_values['parameters'] = get_all_parameters(bag_path)
+
     if compute_mode == ComputeMode.NOTHING:
         return computed_values
 
@@ -55,8 +57,6 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
             saved_names.append(name)
         else:
             computed_values[name] = m
-
-    computed_values['parameters'] = get_all_parameters(bag_path)
 
     output_d = dict(computed_values)
     output_d['saved_names'] = saved_names

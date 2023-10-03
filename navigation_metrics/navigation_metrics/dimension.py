@@ -1,6 +1,6 @@
 import re
 
-OPERATION_PATTERN = re.compile(r'^([\w_]+)(%|[<>]=?)(.*)$')
+OPERATION_PATTERN = re.compile(r'^([\w_]+)(%|[<>=]=?)(.*)$')
 
 OPPOSITE_OPERATION = {
     '<': '>=',
@@ -15,7 +15,7 @@ class Dimension:
 
     def __init__(self, full_name, allow_str=False):
         self.full_name = full_name
-        self.allow_str = False
+        self.allow_str = allow_str
         self.count = 0              # Count how many times this dimension was found
         self.alter_fne = None
         self.op = None
@@ -28,13 +28,21 @@ class Dimension:
         m = OPERATION_PATTERN.match(self.full_name)
         if m:
             self.name, self.op, param = m.groups()
-            self.operand = float(param)
+            self.operand = eval(param)
             if self.op == '%':
                 self.alter_fne = lambda d: d - d % self.operand
             else:
-                self.alter_fne = lambda d: eval(f'{d} {self.op} {self.operand}')
+                self.alter_fne = lambda d: self.eval_op(d)
         else:
             self.name = self.full_name
+
+    def eval_op(self, d, debug=False):
+        try:
+            return eval(f'{d} {self.op} {self.operand}')
+        except Exception as e:
+            if debug:
+                print(e)
+            return None
 
     def get_value(self, metric_d):
         if not self.full_name:
