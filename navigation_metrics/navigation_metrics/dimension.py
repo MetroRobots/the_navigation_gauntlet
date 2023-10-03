@@ -87,3 +87,10 @@ class Dimension:
 
     def __repr__(self):
         return self.name
+
+
+def matches_any(metrics, dimensions):
+    for dimension in dimensions:
+        d_v = dimension.get_value(metrics)
+        if d_v:
+            return True

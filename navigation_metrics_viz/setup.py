@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'histo = navigation_metrics_viz.histo:main',
             'plot = navigation_metrics_viz.plot:main',
             'plot_bag = navigation_metrics_viz.plot_bag:main',
             'viz_trial = navigation_metrics_viz.viz_trial:main',

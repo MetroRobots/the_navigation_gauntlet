@@ -12,23 +12,18 @@ from navigation_metrics.dimension import Dimension, matches_any
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('x')
-    parser.add_argument('y')
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
     parser.add_argument('-p', '--plots-axis')
-    parser.add_argument('-s', '--series-axis')
     parser.add_argument('-f', '--filter-axes', nargs='*', default=[])
     args = parser.parse_args()
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
 
-    xs = collections.defaultdict(lambda: collections.defaultdict(list))
-    ys = collections.defaultdict(lambda: collections.defaultdict(list))
+    counts = collections.defaultdict(collections.Counter)
 
     dimensions = {
-        'x': Dimension(args.x),
-        'y': Dimension(args.y),
+        'x': Dimension(args.x, allow_str=True),
         'p': Dimension(args.plots_axis, allow_str=True),
-        's': Dimension(args.series_axis, allow_str=True),
     }
     d_filters = []
     for filter_s in args.filter_axes:
@@ -41,11 +36,9 @@ def main():
 
         values = {d: dimension.get_value(metrics) for d, dimension in dimensions.items()}
 
-        if values['x'] is not None and values['y'] is not None:
+        if values['x'] is not None:
             p_v = values['p']
-            s_v = values['s']
-            xs[p_v][s_v].append(values['x'])
-            ys[p_v][s_v].append(values['y'])
+            counts[p_v][values['x']] += 1
 
     for dimension in dimensions.values():
         if not dimension.full_name:
@@ -53,30 +46,40 @@ def main():
         click.secho(f'Dimension "{dimension}" found in {dimension.count}/{len(data)} bags',
                     fg='blue' if dimension.count else 'red')
 
-    if not xs and not ys:
+    if not counts:
         return
 
-    num_plots = len(xs)
+    num_plots = len(counts)
     fig, ax_v = subplots(num_plots, sharex=True, sharey=True)
     if num_plots == 1:
         axes = [ax_v]
     else:
         axes = ax_v
 
-    for p_v, ax in zip(xs.keys(), axes):
+    for p_v, ax in zip(counts.keys(), axes):
         ax.set_title(dimensions['p'].format_name(p_v))
 
-        try:
-            ordered_s = sorted(xs[p_v])
-        except TypeError:
-            ordered_s = list(xs[p_v])
-        for s_v in ordered_s:
-            label = dimensions['s'].format_name(s_v)
-            ax.plot(xs[p_v][s_v], ys[p_v][s_v], 'o', label=label)
-        if args.series_axis:
-            ax.legend()
+        count = counts[p_v]
+        numbers = [k for k in count if isinstance(k, float) or isinstance(k, int)]
+        if numbers and dimensions['x'].op == '%':
+            low = min(numbers)
+            hi = max(numbers)
+            xs = []
+            width = dimensions['x'].operand
+            x = low
+            while x <= hi:
+                xs.append(x)
+                x += width
+        else:
+            try:
+                xs = sorted(count.keys())
+            except TypeError:
+                xs = list(count.keys())
+            width = 0.5
+        ys = [count[x] for x in xs]
+
+        ax.bar(xs, ys, width=width)
         ax.set_xlabel(args.x)
-        ax.set_ylabel(args.y)
     show()
 
 
