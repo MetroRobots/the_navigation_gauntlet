@@ -15,6 +15,8 @@ def main():
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
     parser.add_argument('-p', '--plots-axis')
     parser.add_argument('-f', '--filter-axes', nargs='*', default=[])
+    parser.add_argument('-n', '--label-count', action='store_true')
+    parser.add_argument('-r', '--label-percentage', action='store_true')
     args = parser.parse_args()
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
@@ -68,18 +70,48 @@ def main():
             width = dimensions['x'].operand
             x = low
             while x <= hi:
-                xs.append(x)
+                closest = [n for n in numbers if abs(n-x) < width / 100]
+                if closest:
+                    xs.append(closest[0])
+                else:
+                    xs.append(x)
                 x += width
+            ys = [count[x] for x in xs]
+            xs = [x + width / 2 for x in xs]
+            width *= 0.95
         else:
             try:
                 xs = sorted(count.keys())
             except TypeError:
                 xs = list(count.keys())
             width = 0.5
-        ys = [count[x] for x in xs]
+            ys = [count[x] for x in xs]
 
-        ax.bar(xs, ys, width=width)
+        p = ax.bar(xs, ys, width=width)
         ax.set_xlabel(args.x)
+        if args.label_count:
+            for label, rect in zip(ys, p):
+                if not label:
+                    continue
+                ax.text(
+                   rect.get_x() + rect.get_width() / 2, 
+                   rect.get_height(), 
+                   str(label), 
+                   ha="center", 
+                   va="top")
+        if args.label_percentage:
+            N = sum(ys)
+            print(N, dimensions['x'].count)
+            for label, rect in zip(ys, p):
+                if not label:
+                    continue
+                ax.text(
+                   rect.get_x() + rect.get_width() / 2, 
+                   rect.get_height() , 
+                   f'{label*100/N:.1f}%', 
+                   ha="center", 
+                   va="bottom")
+    
     show()
 
 
