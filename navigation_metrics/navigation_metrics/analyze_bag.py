@@ -17,7 +17,7 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
     """Compute all known metrics for the given bag and return results as a dictionary"""
     assert bag_path.is_dir()
     cache_path = bag_path / 'navigation_metrics.yaml'
-    if compute_mode != ComputeMode.EVERYTHING and cache_path.exists():
+    if cache_path.exists():
         computed_values = yaml.safe_load(open(cache_path))
         saved_names = computed_values.pop('saved_names', [])
     else:
@@ -37,7 +37,8 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
     bag = FlexibleBag(bag_path, write_mods=False)
 
     for name, metric in metrics.items():
-        if name in computed_values or name in saved_names:
+        if compute_mode == ComputeMode.NEEDED and (
+                name in computed_values or name in saved_names):
             continue
 
         try:
