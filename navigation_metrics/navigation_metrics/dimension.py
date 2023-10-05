@@ -13,9 +13,8 @@ OPPOSITE_OPERATION = {
 class Dimension:
     """Helper class for analyzing one dimension of a set of metrics."""
 
-    def __init__(self, full_name, allow_str=False):
+    def __init__(self, full_name):
         self.full_name = full_name
-        self.allow_str = allow_str
         self.count = 0              # Count how many times this dimension was found
         self.alter_fne = None
         self.op = None
@@ -54,10 +53,6 @@ class Dimension:
         elif self.name in metric_d.get('parameters', {}):
             value = metric_d['parameters'][self.name]
         else:
-            value = None
-
-        # Avoid plotting error strings
-        if not self.allow_str and isinstance(value, str):
             value = None
 
         if self.alter_fne and value is not None:

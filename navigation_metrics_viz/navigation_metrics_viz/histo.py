@@ -24,12 +24,12 @@ def main():
     counts = collections.defaultdict(collections.Counter)
 
     dimensions = {
-        'x': Dimension(args.x, allow_str=True),
-        'p': Dimension(args.plots_axis, allow_str=True),
+        'x': Dimension(args.x),
+        'p': Dimension(args.plots_axis),
     }
     d_filters = []
     for filter_s in args.filter_axes:
-        d = Dimension(filter_s, allow_str=True)
+        d = Dimension(filter_s)
         d_filters.append(d)
 
     for path, metrics in sorted(data.items()):

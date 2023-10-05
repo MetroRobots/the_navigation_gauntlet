@@ -1,9 +1,10 @@
 import argparse
 import pathlib
 from enum import IntEnum
+import sys
 import yaml
 
-from . import FlexibleBag, MissingTopicException, get_metrics, global_metric_search
+from . import FlexibleBag, get_metrics, global_metric_search
 from .parameters import get_all_parameters
 
 
@@ -13,42 +14,53 @@ class ComputeMode(IntEnum):
     EVERYTHING = 3
 
 
+exception_warnings = set()
+
+
+def should_compute(name, metric_names, compute_mode, computed_values, saved_names, errors):
+    if metric_names is not None and name not in metric_names:
+        return False
+
+    if compute_mode == ComputeMode.EVERYTHING:
+        return True
+
+    if name in computed_values or name in saved_names or name in errors:
+        return False
+
+    return True
+
+
 def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mode=ComputeMode.NEEDED):
     """Compute all known metrics for the given bag and return results as a dictionary"""
     assert bag_path.is_dir()
     cache_path = bag_path / 'navigation_metrics.yaml'
     if cache_path.exists():
         computed_values = yaml.safe_load(open(cache_path))
-        saved_names = computed_values.pop('saved_names', [])
     else:
         computed_values = {}
-        saved_names = []
+    saved_names = computed_values.pop('saved_names', [])
+    errors = computed_values.pop('errors', {})
 
     computed_values['parameters'] = get_all_parameters(bag_path)
 
     if compute_mode == ComputeMode.NOTHING:
         return computed_values
 
-    if metric_names is None:
-        metrics = get_metrics()
-    else:
-        metrics = {name: metric for name, metric in get_metrics().items() if name in metric_names}
-
     bag = FlexibleBag(bag_path, write_mods=False)
 
-    for name, metric in metrics.items():
-        if compute_mode == ComputeMode.NEEDED and (
-                name in computed_values or name in saved_names):
+    for name, metric in get_metrics().items():
+        if not should_compute(name, metric_names, compute_mode, computed_values, saved_names, errors):
             continue
 
         try:
             m = metric(bag)
-        except MissingTopicException as e:
-            print(f'Missing data: {e} for {name}')
-            continue
         except Exception as e:
             if ignore_errors:
-                computed_values[name] = str(e)
+                error_s = f'{e} for {name}'
+                if error_s not in exception_warnings:
+                    exception_warnings.add(error_s)
+                    print(error_s, file=sys.stderr)
+                errors[name] = str(e)
                 continue
             else:
                 raise
@@ -61,6 +73,8 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
 
     output_d = dict(computed_values)
     output_d['saved_names'] = saved_names
+    if errors:
+        output_d['errors'] = errors
     yaml.safe_dump(output_d, open(cache_path, 'w'))
 
     return computed_values

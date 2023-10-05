@@ -27,12 +27,12 @@ def main():
     dimensions = {
         'x': Dimension(args.x),
         'y': Dimension(args.y),
-        'p': Dimension(args.plots_axis, allow_str=True),
-        's': Dimension(args.series_axis, allow_str=True),
+        'p': Dimension(args.plots_axis),
+        's': Dimension(args.series_axis),
     }
     d_filters = []
     for filter_s in args.filter_axes:
-        d = Dimension(filter_s, allow_str=True)
+        d = Dimension(filter_s)
         d_filters.append(d)
 
     for path, metrics in sorted(data.items()):
