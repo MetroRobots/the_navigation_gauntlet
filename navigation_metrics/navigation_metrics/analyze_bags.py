@@ -67,7 +67,7 @@ def main():
         row = {}
         row['name'] = str(path).replace(base_path, '')
 
-        params = row.pop('parameters', {})
+        params = metrics.pop('parameters', {})
         metrics.update(params)
         d_v = args.dimension.get_value(metrics)
 

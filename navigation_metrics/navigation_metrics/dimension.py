@@ -60,7 +60,7 @@ class Dimension:
         if not self.allow_str and isinstance(value, str):
             value = None
 
-        if self.alter_fne and value:
+        if self.alter_fne and value is not None:
             value = self.alter_fne(value)
 
         if value is not None:
