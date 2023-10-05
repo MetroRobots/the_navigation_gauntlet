@@ -94,11 +94,11 @@ def main():
                 if not label:
                     continue
                 ax.text(
-                   rect.get_x() + rect.get_width() / 2, 
-                   rect.get_height(), 
-                   str(label), 
-                   ha="center", 
-                   va="top")
+                    rect.get_x() + rect.get_width() / 2,
+                    rect.get_height(),
+                    str(label),
+                    ha='center',
+                    va='top')
         if args.label_percentage:
             N = sum(ys)
             print(N, dimensions['x'].count)
@@ -106,12 +106,12 @@ def main():
                 if not label:
                     continue
                 ax.text(
-                   rect.get_x() + rect.get_width() / 2, 
-                   rect.get_height() , 
-                   f'{label*100/N:.1f}%', 
-                   ha="center", 
-                   va="bottom")
-    
+                    rect.get_x() + rect.get_width() / 2,
+                    rect.get_height(),
+                    f'{label*100/N:.1f}%',
+                    ha='center',
+                    va='bottom')
+
     show()
 
 
