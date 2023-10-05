@@ -13,7 +13,7 @@ from polygon_utils.shortest_path import shortest_path
 from navigation_metrics.metric import nav_metric
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
 from navigation_metrics.util import pose_stamped_distance, pose2d_distance, point_distance, metric_final
-from navigation_metrics.util import min_max_total_avg
+from navigation_metrics.util import min_max_avg_d
 
 
 def vector_to_point(v):
@@ -99,11 +99,6 @@ def pose_to_goal_distance(data):
 
 
 @nav_metric
-def distance_to_goal(data):
-    return metric_final(data['/distance_to_goal'])
-
-
-@nav_metric
 def angle_to_goal(data):
     goals = data['/trial_goal_pose_2d']
     path = data['/path2d']
@@ -111,11 +106,11 @@ def angle_to_goal(data):
 
 
 @nav_metric
-def distance_to_goal_metrics(data):
-    the_min, the_max, _, avg = min_max_total_avg(data['/distance_to_goal'])
-    return {'minimum_distance_to_goal': the_min,
-            'maximum_distance_to_goal': the_max,
-            'average_distance_to_goal': avg}
+def distance_to_goal(data):
+    distances = data['/distance_to_goal']
+    metrics = min_max_avg_d(distances)
+    metrics['final'] = metric_final(distances)
+    return metrics
 
 
 @nav_metric

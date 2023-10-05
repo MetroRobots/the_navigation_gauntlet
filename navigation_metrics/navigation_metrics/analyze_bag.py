@@ -12,19 +12,22 @@ class ComputeMode(IntEnum):
     NOTHING = 1
     NEEDED = 2
     EVERYTHING = 3
+    CLEAN = 4
 
 
 exception_warnings = set()
 
 
-def should_compute(name, metric_names, compute_mode, computed_values, saved_names, errors):
+def should_compute(name, metric_names, compute_mode, computed_values, errors):
     if metric_names is not None and name not in metric_names:
         return False
 
-    if compute_mode == ComputeMode.EVERYTHING:
+    if compute_mode == ComputeMode.EVERYTHING or compute_mode == ComputeMode.CLEAN:
         return True
 
-    if name in computed_values or name in saved_names or name in errors:
+    short_name = name.partition('/')[0]
+
+    if short_name in computed_values or short_name in errors:
         return False
 
     return True
@@ -34,11 +37,10 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
     """Compute all known metrics for the given bag and return results as a dictionary"""
     assert bag_path.is_dir()
     cache_path = bag_path / 'navigation_metrics.yaml'
-    if cache_path.exists():
+    if cache_path.exists() and compute_mode != ComputeMode.CLEAN:
         computed_values = yaml.safe_load(open(cache_path))
     else:
         computed_values = {}
-    saved_names = computed_values.pop('saved_names', [])
     errors = computed_values.pop('errors', {})
 
     computed_values['parameters'] = get_all_parameters(bag_path)
@@ -49,11 +51,14 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
     bag = FlexibleBag(bag_path, write_mods=False)
 
     for name, metric in get_metrics().items():
-        if not should_compute(name, metric_names, compute_mode, computed_values, saved_names, errors):
+        if not should_compute(name, metric_names, compute_mode, computed_values, errors):
             continue
 
         try:
             m = metric(bag)
+
+            if name in errors:
+                del errors[name]
         except Exception as e:
             if ignore_errors:
                 error_s = f'{e} for {name}'
@@ -65,14 +70,9 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
             else:
                 raise
 
-        if isinstance(m, dict):
-            computed_values.update(m)
-            saved_names.append(name)
-        else:
-            computed_values[name] = m
+        computed_values[name] = m
 
     output_d = dict(computed_values)
-    output_d['saved_names'] = saved_names
     if errors:
         output_d['errors'] = errors
     yaml.safe_dump(output_d, open(cache_path, 'w'))

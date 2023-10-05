@@ -72,12 +72,22 @@ def main():
         d_v = args.dimension.get_value(metrics)
 
         for metric in my_metrics:
-            if metric in metrics:
-                row[metric] = metrics[metric]
+            mname, _, mrest = metric.partition('/')
+            if mname not in metrics:
+                continue
+            m = metrics[mname]
+            if isinstance(m, dict):
+                for k, v in m.items():
+                    if mrest and mrest != k:
+                        continue
+                    row[f'{mname}/{k}'] = v
+            else:
+                row[mname] = m
+
         row_sets[d_v].append(row)
 
         for metric, value in row.items():
-            if isinstance(value, str):
+            if metric == 'name':
                 continue
             by_metrics[d_v][metric].append(value)
 

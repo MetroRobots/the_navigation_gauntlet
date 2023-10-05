@@ -84,3 +84,13 @@ def min_max_total_avg(series, getter=default_getter):
         total += v
         count += 1
     return the_min, the_max, total, total / count
+
+
+def min_max_avg_d(series, getter=default_getter):
+    the_min, the_max, _, avg = min_max_total_avg(series, getter)
+    return {'min': the_min, 'max': the_max, 'avg': avg}
+
+
+def min_max_total_avg_d(series, getter=default_getter):
+    the_min, the_max, total, avg = min_max_total_avg(series, getter)
+    return {'min': the_min, 'max': the_max, 'total': total, 'avg': avg}

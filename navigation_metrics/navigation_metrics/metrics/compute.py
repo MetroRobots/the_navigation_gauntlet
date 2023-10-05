@@ -1,5 +1,5 @@
 from navigation_metrics.metric import nav_metric
-from navigation_metrics.util import min_max_total_avg, stamp_to_float
+from navigation_metrics.util import min_max_total_avg_d, stamp_to_float
 import collections
 
 
@@ -21,11 +21,9 @@ def compute_time(data):
 
     metrics = {}
     for name, series in values.items():
-        the_min, the_max, total, avg = min_max_total_avg(series, lambda bmsg: stamp_to_float(bmsg.msg.duration))
-        metrics[f'total_compute_{name}'] = total
-        metrics[f'average_compute_{name}'] = avg
-        metrics[f'min_compute_{name}'] = the_min
-        metrics[f'max_compute_{name}'] = the_max
-        metrics[f'compute_{name}_per_second'] = total / (end_t - start_t)
+        s_metrics = min_max_total_avg_d(series, lambda bmsg: stamp_to_float(bmsg.msg.duration))
+        for k, v in s_metrics.items():
+            metrics[f'{name}/{k}'] = v
+        metrics[f'{name}/per_second'] = s_metrics['total'] / (end_t - start_t)
 
     return metrics

@@ -1,6 +1,6 @@
 import re
 
-OPERATION_PATTERN = re.compile(r'^([\w_]+)(%|[<>=]=?)(.*)$')
+OPERATION_PATTERN = re.compile(r'^([\w_/]+)(%|[<>=]=?)(.*)$')
 
 OPPOSITE_OPERATION = {
     '<': '>=',
@@ -35,6 +35,8 @@ class Dimension:
         else:
             self.name = self.full_name
 
+        self.base_name, _, self.extension = self.name.partition('/')
+
     def eval_op(self, d, debug=False):
         try:
             return eval(f'{d} {self.op} {self.operand}')
@@ -48,12 +50,15 @@ class Dimension:
             return
 
         # Look in both metrics and parameters
-        if self.name in metric_d:
-            value = metric_d[self.name]
-        elif self.name in metric_d.get('parameters', {}):
-            value = metric_d['parameters'][self.name]
+        if self.base_name in metric_d:
+            value = metric_d[self.base_name]
+        elif self.base_name in metric_d.get('parameters', {}):
+            value = metric_d['parameters'][self.base_name]
         else:
             value = None
+
+        if self.extension and value:
+            value = value[self.extension]
 
         if self.alter_fne and value is not None:
             value = self.alter_fne(value)
