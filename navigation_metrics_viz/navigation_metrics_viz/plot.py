@@ -35,10 +35,12 @@ def main():
         d = Dimension(filter_s)
         d_filters.append(d)
 
+    N = 0
     for path, metrics in sorted(data.items()):
         if d_filters and matches_any(metrics, d_filters):
             continue
 
+        N += 1
         values = {d: dimension.get_value(metrics) for d, dimension in dimensions.items()}
 
         if values['x'] is not None and values['y'] is not None:
@@ -47,10 +49,14 @@ def main():
             xs[p_v][s_v].append(values['x'])
             ys[p_v][s_v].append(values['y'])
 
+    for d_filter in d_filters:
+        click.secho(f'Filter dimension "{d_filter}" found in {d_filter.count}/{len(data)} bags',
+                    fg='blue' if d_filter.count else 'red')
+
     for dimension in dimensions.values():
         if not dimension.full_name:
             continue
-        click.secho(f'Dimension "{dimension}" found in {dimension.count}/{len(data)} bags',
+        click.secho(f'Dimension "{dimension}" found in {dimension.count}/{N} bags',
                     fg='blue' if dimension.count else 'red')
 
     if not xs and not ys:

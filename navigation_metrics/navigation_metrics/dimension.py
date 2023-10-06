@@ -1,12 +1,14 @@
 import re
 
-OPERATION_PATTERN = re.compile(r'^([\w_/]+)(%|[<>=]=?)(.*)$')
+OPERATION_PATTERN = re.compile(r'^([\w_/]+)(%|[<>=!]=?)(.*)$')
 
 OPPOSITE_OPERATION = {
     '<': '>=',
     '<=': '>',
     '>': '<=',
     '>=': '<',
+    '==': '!=',
+    '!=': '==',
 }
 
 
@@ -27,7 +29,11 @@ class Dimension:
         m = OPERATION_PATTERN.match(self.full_name)
         if m:
             self.name, self.op, param = m.groups()
-            self.operand = eval(param)
+            try:
+                self.operand = eval(param)
+            except NameError:
+                self.operand = param
+
             if self.op == '%':
                 self.alter_fne = lambda d: d - d % self.operand
             else:
@@ -38,8 +44,13 @@ class Dimension:
         self.base_name, _, self.extension = self.name.partition('/')
 
     def eval_op(self, d, debug=False):
+        if isinstance(self.operand, str):
+            d = f'"{d}"'
+            operand = f'"{self.operand}"'
+        else:
+            operand = self.operand
         try:
-            return eval(f'{d} {self.op} {self.operand}')
+            return eval(f'{d} {self.op} {operand}')
         except Exception as e:
             if debug:
                 print(e)
