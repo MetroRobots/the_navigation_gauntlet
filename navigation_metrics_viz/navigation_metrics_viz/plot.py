@@ -23,6 +23,7 @@ def main():
 
     xs = collections.defaultdict(lambda: collections.defaultdict(list))
     ys = collections.defaultdict(lambda: collections.defaultdict(list))
+    counts = collections.Counter()
 
     dimensions = {
         'x': Dimension(args.x),
@@ -44,6 +45,7 @@ def main():
         if values['x'] is not None and values['y'] is not None:
             p_v = values['p']
             s_v = values['s']
+            counts[p_v] += 1
             xs[p_v][s_v].append(values['x'])
             ys[p_v][s_v].append(values['y'])
 
@@ -64,7 +66,8 @@ def main():
         axes = ax_v
 
     for p_v, ax in zip(xs.keys(), axes):
-        ax.set_title(dimensions['p'].format_name(p_v))
+        title = dimensions['p'].format_name(p_v)
+        ax.set_title(f'{title} (N={counts[p_v]})')
 
         try:
             ordered_s = sorted(xs[p_v])
