@@ -35,10 +35,4 @@ def completed(data):
 
 @nav_metric
 def total_time(data):
-    goals = data['/trial_goal_pose']
-    results = data['/navigation_result']
-
-    if not goals or not results:
-        return
-
-    return results[0].t - goals[0].t
+    return data.length()

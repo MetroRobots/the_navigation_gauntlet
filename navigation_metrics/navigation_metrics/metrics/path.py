@@ -32,20 +32,15 @@ def transform_to_pose(transform):
 
 
 @flexible_bag_converter_function('/path')
-def tf_to_pose(data, period=0.1):
+def tf_to_pose(data):
     seq = []
-    start_t = data['/trial_goal_pose'][0].t
-    end_t = data['/navigation_result'][0].t
     last_t = None
 
     global_frame = data.get_parameter('global_frame', 'map')
     robot_frame = data.get_parameter('robot_frame', 'base_link')
+    period = data.get_parameter('path_point_period', 0.1)
 
     for t, msg in data['/tf']:
-        if t < start_t:
-            continue
-        elif t > end_t:
-            break
         for transform in msg.transforms:
             if transform.header.frame_id == global_frame and transform.child_frame_id == robot_frame:
                 if last_t is None or (t - last_t) >= period:
@@ -161,7 +156,6 @@ def interpolate_path(start_pose, path, goal_pose):
     return path_msg
 
 
-@flexible_bag_converter_function('/optimum_path')
 def shortest_path_calculation(data):
     start_bmsg = data['/path'][0]
     start_pose = start_bmsg.msg
@@ -178,15 +172,14 @@ def shortest_path_calculation(data):
 
     path = interpolate_path(start_pose, path2d, end_pose)
 
-    seq = [BagMessage(start_bmsg.t, path)]
-    return seq
+    return path
 
 
 @nav_metric
 def efficiency(data):
     pl = path_length(data)
 
-    op = data['/optimum_path'][0].msg
+    op = shortest_path_calculation(data)
     od = 0.0
     prev_pose = None
     for pose in op.poses:

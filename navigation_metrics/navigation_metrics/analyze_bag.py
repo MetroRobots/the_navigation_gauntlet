@@ -6,6 +6,7 @@ import yaml
 
 from . import FlexibleBag, get_metrics, global_metric_search
 from .parameters import get_all_parameters
+from .window import WindowBag, TimeWindow
 
 
 class ComputeMode(IntEnum):
@@ -33,6 +34,16 @@ def should_compute(name, metric_names, compute_mode, computed_values, errors):
     return True
 
 
+def get_standard_window(bag):
+    starts = bag['/trial_goal_pose']
+    ends = bag['/navigation_result']
+
+    if not starts or not ends:
+        return
+
+    return TimeWindow(starts[0].t, ends[0].t)
+
+
 def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mode=ComputeMode.NEEDED):
     """Compute all known metrics for the given bag and return results as a dictionary"""
     assert bag_path.is_dir()
@@ -50,12 +61,18 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
 
     bag = FlexibleBag(bag_path, write_mods=False)
 
+    window = get_standard_window(bag)
+    if not window:
+        return computed_values
+
+    data = WindowBag(bag, window)
+
     for name, metric in get_metrics().items():
         if not should_compute(name, metric_names, compute_mode, computed_values, errors):
             continue
 
         try:
-            m = metric(bag)
+            m = metric(data)
 
             if name in errors:
                 del errors[name]
@@ -101,11 +118,18 @@ def main():
         if name == 'parameters':
             continue
 
-        if isinstance(value, float):
-            v_s = f'{value:.2f}'
+        def format_value(v):
+            if isinstance(v, float):
+                return f'{v:.2f}'
+            else:
+                return str(v)
+
+        if isinstance(value, dict):
+            for k, v in value.items():
+                print(template.format(name=f'{name}/{k}', v_s=format_value(v)))
+            continue
         else:
-            v_s = str(value)
-        print(template.format(name=name, v_s=v_s))
+            print(template.format(name=name, v_s=format_value(value)))
 
     if 'parameters' in metrics:
         print('\nParameters:')
