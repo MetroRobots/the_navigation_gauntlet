@@ -16,12 +16,17 @@ def main():
     parser.add_argument('-p', '--plots-axis')
     parser.add_argument('-s', '--series-axis')
     parser.add_argument('-f', '--filter-axes', nargs='*', default=[])
+    parser.add_argument('-m', '--plot-max', action='store_true')
+    parser.add_argument('-x', '--marker-scale', type=int, default=1)
+    parser.add_argument('-y')
     args = parser.parse_args()
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
 
     ys = collections.defaultdict(lambda: collections.defaultdict(list))
     errors = collections.defaultdict(lambda: collections.defaultdict(list))
+    maxes = collections.defaultdict(lambda: collections.defaultdict(list))
+    added_values = collections.defaultdict(lambda: collections.defaultdict(list))
     counts = collections.Counter()
 
     dimensions = {
@@ -29,6 +34,8 @@ def main():
         'e': Dimension(f'{args.metric}/stddev'),
         'p': Dimension(args.plots_axis),
         's': Dimension(args.series_axis),
+        'm': Dimension(f'{args.metric}/max'),
+        'a': Dimension(args.y)
     }
     d_filters = []
     for filter_s in args.filter_axes:
@@ -50,6 +57,8 @@ def main():
 
             errors[p_v][s_v].append(values['e'])
             ys[p_v][s_v].append(values['y'])
+            maxes[p_v][s_v].append(values['m'])
+            added_values[p_v][s_v].append(values['a'])
 
     for d_filter in d_filters:
         click.secho(f'Filter dimension "{d_filter}" found in {d_filter.count}/{len(data)} bags',
@@ -72,6 +81,8 @@ def main():
         axes = ax_v
 
     for p_v, ax in zip(ys.keys(), axes):
+        ax.grid(axis='y')
+
         title = dimensions['p'].format_name(p_v)
         if title:
             ax.set_title(f'{title} (N={counts[p_v]})')
@@ -87,7 +98,11 @@ def main():
             d = ys[p_v][s_v]
             x = list(range(len(d)))
             ax.errorbar(x, d, yerr=errors[p_v][s_v], fmt='o', label=label)
-        if args.series_axis:
+            if args.plot_max:
+                ax.plot(x, maxes[p_v][s_v], '_', label=dimensions['m'], markersize=args.marker_scale)
+            if args.y:
+                ax.plot(x, added_values[p_v][s_v], 'x', label=dimensions['a'], markersize=args.marker_scale)
+        if args.series_axis or args.plot_max or args.y:
             ax.legend()
         ax.set_xlabel('')
         ax.set_ylabel(args.metric)

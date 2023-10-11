@@ -104,3 +104,9 @@ def standard_deviation(series, getter=default_getter):
     values = [getter(bmsg) for bmsg in series]
     n_arr = numpy.array(values)
     return float(numpy.std(n_arr))
+
+
+def min_max_avg_dev_d(series, getter=default_getter):
+    the_min, the_max, _, avg = min_max_total_avg(series, getter)
+    stddev = standard_deviation(series, getter)
+    return {'min': the_min, 'max': the_max, 'avg': avg, 'stddev': stddev}
