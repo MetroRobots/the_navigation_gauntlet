@@ -23,6 +23,7 @@ setup(
             'histo = navigation_metrics_viz.histo:main',
             'plot = navigation_metrics_viz.plot:main',
             'plot_bag = navigation_metrics_viz.plot_bag:main',
+            'plot_means = navigation_metrics_viz.plot_means:main',
             'viz_trial = navigation_metrics_viz.viz_trial:main',
         ]
     },

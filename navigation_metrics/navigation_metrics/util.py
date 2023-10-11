@@ -1,5 +1,6 @@
 from math import hypot
 from angles import shortest_angular_distance
+import numpy
 
 
 def point_distance(p0, p1):
@@ -94,3 +95,12 @@ def min_max_avg_d(series, getter=default_getter):
 def min_max_total_avg_d(series, getter=default_getter):
     the_min, the_max, total, avg = min_max_total_avg(series, getter)
     return {'min': the_min, 'max': the_max, 'total': total, 'avg': avg}
+
+
+def standard_deviation(series, getter=default_getter):
+    if not series:
+        return 0.0
+
+    values = [getter(bmsg) for bmsg in series]
+    n_arr = numpy.array(values)
+    return float(numpy.std(n_arr))

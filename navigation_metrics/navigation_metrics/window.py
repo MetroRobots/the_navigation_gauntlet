@@ -36,3 +36,6 @@ class WindowBag:
 
     def length(self):
         return self.window.length()
+
+    def __repr__(self):
+        return f'{self.window.start - self.bag.get_start_time()} - {self.window.end - self.bag.get_start_time()}'

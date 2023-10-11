@@ -11,8 +11,7 @@ from navigation_metrics.dimension import Dimension, matches_any
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('x')
-    parser.add_argument('y')
+    parser.add_argument('metric')
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
     parser.add_argument('-p', '--plots-axis')
     parser.add_argument('-s', '--series-axis')
@@ -21,13 +20,13 @@ def main():
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
 
-    xs = collections.defaultdict(lambda: collections.defaultdict(list))
     ys = collections.defaultdict(lambda: collections.defaultdict(list))
+    errors = collections.defaultdict(lambda: collections.defaultdict(list))
     counts = collections.Counter()
 
     dimensions = {
-        'x': Dimension(args.x),
-        'y': Dimension(args.y),
+        'y': Dimension(f'{args.metric}/avg'),
+        'e': Dimension(f'{args.metric}/stddev'),
         'p': Dimension(args.plots_axis),
         's': Dimension(args.series_axis),
     }
@@ -37,18 +36,19 @@ def main():
         d_filters.append(d)
 
     N = 0
-    for path, metrics in sorted(data.items()):
+    for path, metrics in sorted(data.items(), key=lambda d: dimensions['y'].get_value(d[1])):
         if d_filters and matches_any(metrics, d_filters):
             continue
 
         N += 1
         values = {d: dimension.get_value(metrics) for d, dimension in dimensions.items()}
 
-        if values['x'] is not None and values['y'] is not None:
+        if values['y'] is not None and values['e'] is not None:
             p_v = values['p']
             s_v = values['s']
             counts[p_v] += 1
-            xs[p_v][s_v].append(values['x'])
+
+            errors[p_v][s_v].append(values['e'])
             ys[p_v][s_v].append(values['y'])
 
     for d_filter in d_filters:
@@ -61,17 +61,17 @@ def main():
         click.secho(f'Dimension "{dimension}" found in {dimension.count}/{N} bags',
                     fg='blue' if dimension.count else 'red')
 
-    if not xs and not ys:
+    if not ys:
         return
 
-    num_plots = len(xs)
+    num_plots = len(ys)
     fig, ax_v = subplots(num_plots, sharex=True, sharey=True)
     if num_plots == 1:
         axes = [ax_v]
     else:
         axes = ax_v
 
-    for p_v, ax in zip(xs.keys(), axes):
+    for p_v, ax in zip(ys.keys(), axes):
         title = dimensions['p'].format_name(p_v)
         if title:
             ax.set_title(f'{title} (N={counts[p_v]})')
@@ -79,16 +79,18 @@ def main():
             ax.set_title(f'N={counts[p_v]}')
 
         try:
-            ordered_s = sorted(xs[p_v])
+            ordered_s = sorted(ys[p_v])
         except TypeError:
-            ordered_s = list(xs[p_v])
+            ordered_s = list(ys[p_v])
         for s_v in ordered_s:
             label = dimensions['s'].format_name(s_v)
-            ax.plot(xs[p_v][s_v], ys[p_v][s_v], 'o', label=label)
+            d = ys[p_v][s_v]
+            x = list(range(len(d)))
+            ax.errorbar(x, d, yerr=errors[p_v][s_v], fmt='o', label=label)
         if args.series_axis:
             ax.legend()
-        ax.set_xlabel(args.x)
-        ax.set_ylabel(args.y)
+        ax.set_xlabel('')
+        ax.set_ylabel(args.metric)
     show()
 
 
