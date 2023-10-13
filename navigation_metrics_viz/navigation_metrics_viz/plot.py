@@ -3,6 +3,7 @@ import collections
 import click
 from matplotlib.pyplot import subplots, show
 import pathlib
+import numpy
 
 from navigation_metrics.analyze_bag import ComputeMode
 from navigation_metrics.analyze_bags import analyze_bags
@@ -84,7 +85,22 @@ def main():
             ordered_s = list(xs[p_v])
         for s_v in ordered_s:
             label = dimensions['s'].format_name(s_v)
-            ax.plot(xs[p_v][s_v], ys[p_v][s_v], 'o', label=label)
+
+            if dimensions['x'].op == '%':
+                buckets = collections.defaultdict(list)
+                for x, y in zip(xs[p_v][s_v], ys[p_v][s_v]):
+                    buckets[x].append(y)
+                bxs = sorted(buckets)
+                bys = []
+                berr = []
+                for bx in bxs:
+                    values = numpy.array(buckets[bx])
+                    bys.append(numpy.mean(values))
+                    berr.append(numpy.std(values))
+                ax.errorbar(bxs, bys, yerr=berr, fmt='o', label=label)
+
+            else:
+                ax.plot(xs[p_v][s_v], ys[p_v][s_v], 'o', label=label)
         if args.series_axis:
             ax.legend()
         ax.set_xlabel(args.x)
