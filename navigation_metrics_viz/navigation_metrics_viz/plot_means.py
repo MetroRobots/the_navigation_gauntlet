@@ -45,9 +45,17 @@ def main():
         d_filters.append(d)
 
     N = 0
-    for path, metrics in sorted(data.items(), key=lambda d: dimensions['y'].get_value(d[1])):
+    valid_data = {}
+    for path, metrics in data.items():
         if d_filters and matches_any(metrics, d_filters):
             continue
+
+        if dimensions['y'].get_value(metrics) is None:
+            continue
+
+        valid_data[path] = metrics
+
+    for path, metrics in sorted(valid_data.items(), key=lambda d: dimensions['y'].get_value(d[1])):
 
         N += 1
         values = {d: dimension.get_value(metrics) for d, dimension in dimensions.items()}
@@ -112,9 +120,10 @@ def main():
                     for i in range(0, len(x), args.bin_size):
                         sub_x = x[i:i+args.bin_size]
                         sub_y = added_values[p_v][s_v][i:i+args.bin_size]
+                        sub_y = [xx for xx in sub_y if xx is not None]
                         bxs.append(sum(sub_x) / len(sub_x))
                         bys.append(sum(sub_y) / len(sub_y))
-                        bes.append(standard_deviation(bes, lambda g: g))
+                        bes.append(standard_deviation(sub_y, lambda g: g))
                     ax.errorbar(bxs, bys, yerr=bes, fmt='o', label=f'Binned {args.y}')
 
         if args.series_axis or args.plot_max or args.y:

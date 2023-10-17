@@ -4,7 +4,7 @@ from enum import IntEnum
 import sys
 import yaml
 
-from . import FlexibleBag, get_metrics, global_metric_search
+from . import FlexibleBag, get_metrics, global_metric_search, MissingTopicException
 from .parameters import get_all_parameters
 from .window import WindowBag, TimeWindow
 
@@ -35,13 +35,16 @@ def should_compute(name, metric_names, compute_mode, computed_values, errors):
 
 
 def get_standard_window(bag):
-    starts = bag['/trial_goal_pose']
-    ends = bag['/navigation_result']
+    try:
+        starts = bag['/trial_goal_pose']
+        ends = bag['/navigation_result']
 
-    if not starts or not ends:
-        return
+        if not starts or not ends:
+            return
 
-    return TimeWindow(starts[0].t, ends[0].t)
+        return TimeWindow(starts[0].t, ends[0].t)
+    except MissingTopicException:
+        pass
 
 
 def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mode=ComputeMode.NEEDED):
