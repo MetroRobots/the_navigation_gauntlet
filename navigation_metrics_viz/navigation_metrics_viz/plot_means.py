@@ -7,6 +7,7 @@ import pathlib
 from navigation_metrics.analyze_bag import ComputeMode
 from navigation_metrics.analyze_bags import analyze_bags
 from navigation_metrics.dimension import Dimension, matches_any
+from navigation_metrics.util import standard_deviation
 
 
 def main():
@@ -19,6 +20,7 @@ def main():
     parser.add_argument('-m', '--plot-max', action='store_true')
     parser.add_argument('-x', '--marker-scale', type=int, default=1)
     parser.add_argument('-y')
+    parser.add_argument('-b', '--bin-size', type=int)
     args = parser.parse_args()
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
@@ -102,6 +104,19 @@ def main():
                 ax.plot(x, maxes[p_v][s_v], '_', label=dimensions['m'], markersize=args.marker_scale)
             if args.y:
                 ax.plot(x, added_values[p_v][s_v], 'x', label=dimensions['a'], markersize=args.marker_scale)
+
+                if args.bin_size:
+                    bxs = []
+                    bys = []
+                    bes = []
+                    for i in range(0, len(x), args.bin_size):
+                        sub_x = x[i:i+args.bin_size]
+                        sub_y = added_values[p_v][s_v][i:i+args.bin_size]
+                        bxs.append(sum(sub_x) / len(sub_x))
+                        bys.append(sum(sub_y) / len(sub_y))
+                        bes.append(standard_deviation(bes, lambda g: g))
+                    ax.errorbar(bxs, bys, yerr=bes, fmt='o', label=f'Binned {args.y}')
+
         if args.series_axis or args.plot_max or args.y:
             ax.legend()
         ax.set_xlabel('')
