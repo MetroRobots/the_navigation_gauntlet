@@ -1,6 +1,9 @@
-from math import hypot
+from math import hypot, modf
 from angles import shortest_angular_distance
+from builtin_interfaces.msg import Time
 import numpy
+
+from .flexible_bag import BagMessage
 
 
 def point_distance(p0, p1):
@@ -26,6 +29,24 @@ def pose2d_distance(p0, p1):
 
 def stamp_to_float(stamp):
     return stamp.sec + stamp.nanosec / 1e9
+
+
+def float_to_stamp(t):
+    stamp = Time()
+    fracpart, intpart = modf(t)
+    stamp.sec = int(intpart)
+    stamp.nanosec = int(fracpart * 1e9)
+    return stamp
+
+
+def stampify(unstamped_seq, stamped_type, field_name):
+    seq = []
+    for bmsg in unstamped_seq:
+        stamped_msg = stamped_type()
+        stamped_msg.header.stamp = float_to_stamp(bmsg.t)
+        setattr(stamped_msg, field_name, bmsg.msg)
+        seq.append(BagMessage(bmsg.t, stamped_msg))
+    return seq
 
 
 def default_getter(bmsg):

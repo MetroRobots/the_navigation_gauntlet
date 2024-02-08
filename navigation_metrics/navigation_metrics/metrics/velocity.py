@@ -1,8 +1,8 @@
-from nav_2d_msgs.msg import Twist2DStamped
+from nav_2d_msgs.msg import Twist2D, Twist2DStamped
 
 from navigation_metrics.metric import nav_metric
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
-from navigation_metrics.util import pose2d_distance, stamp_to_float, average, metric_max
+from navigation_metrics.util import pose2d_distance, stamp_to_float, average, metric_max, stampify
 
 
 @flexible_bag_converter_function('/actual_velocity')
@@ -40,9 +40,30 @@ def derivative(src_topic):
     return seq
 
 
+@flexible_bag_converter_function('/cmd_vel_2d')
+def command_vel_2d(data):
+    seq = []
+    for bmsg in data['/cmd_vel']:
+        twist = Twist2D()
+        twist.x = bmsg.msg.linear.x
+        twist.theta = bmsg.msg.angular.z
+        seq.append(BagMessage(bmsg.t, twist))
+    return seq
+
+
+@flexible_bag_converter_function('/cmd_vel_stamped')
+def command_vel_stamped(data):
+    return stampify(data['/cmd_vel_2d'], Twist2DStamped, 'velocity')
+
+
 @flexible_bag_converter_function('/actual_acceleration')
 def velocity_to_acceleration(data):
     return derivative(data['/actual_velocity'])
+
+
+@flexible_bag_converter_function('/cmd_acc')
+def command_acceleration(data):
+    return derivative(data['/cmd_vel_stamped'])
 
 
 @flexible_bag_converter_function('/actual_jerk')
@@ -50,39 +71,87 @@ def acceleration_to_jerk(data):
     return derivative(data['/actual_acceleration'])
 
 
+@flexible_bag_converter_function('/cmd_jerk')
+def command_jerk(data):
+    return derivative(data['/cmd_acc'])
+
+
+def get_absolute_x(bmsg):
+    return abs(bmsg.msg.velocity.x)
+
+
+def get_absolute_theta(bmsg):
+    return abs(bmsg.msg.velocity.theta)
+
+
 @nav_metric
 def average_translational_velocity(data):
-    return average(data['/actual_velocity'], lambda bmsg: abs(bmsg.msg.velocity.x))
+    return average(data['/actual_velocity'], get_absolute_x)
 
 
 @nav_metric
 def average_translational_acceleration(data):
-    return average(data['/actual_acceleration'], lambda bmsg: abs(bmsg.msg.velocity.x))
+    return average(data['/actual_acceleration'], get_absolute_x)
 
 
 @nav_metric
 def average_translational_jerk(data):
-    return average(data['/actual_jerk'], lambda bmsg: abs(bmsg.msg.velocity.x))
+    return average(data['/actual_jerk'], get_absolute_x)
 
 
 @nav_metric
 def average_rotational_velocity(data):
-    return average(data['/actual_velocity'], lambda bmsg: abs(bmsg.msg.velocity.theta))
+    return average(data['/actual_velocity'], get_absolute_theta)
 
 
 @nav_metric
 def average_rotational_acceleration(data):
-    return average(data['/actual_acceleration'], lambda bmsg: abs(bmsg.msg.velocity.theta))
+    return average(data['/actual_acceleration'], get_absolute_theta)
 
 
 @nav_metric
 def average_rotational_jerk(data):
-    return average(data['/actual_jerk'], lambda bmsg: abs(bmsg.msg.velocity.theta))
+    return average(data['/actual_jerk'], get_absolute_theta)
 
 
 @nav_metric
 def max_translational_velocity(data):
-    return metric_max(data['/actual_velocity'], lambda bmsg: abs(bmsg.msg.velocity.x))
+    return metric_max(data['/actual_velocity'], get_absolute_x)
+
+
+@nav_metric
+def average_translational_cmd_vel(data):
+    return average(data['/cmd_vel_stamped'], get_absolute_x)
+
+
+@nav_metric
+def average_translational_cmd_acc(data):
+    return average(data['/cmd_acc'], get_absolute_x)
+
+
+@nav_metric
+def average_translational_cmd_jerk(data):
+    return average(data['/cmd_jerk'], get_absolute_x)
+
+
+@nav_metric
+def average_rotational_cmd_vel(data):
+    return average(data['/cmd_vel_stamped'], get_absolute_theta)
+
+
+@nav_metric
+def average_rotational_cmd_acc(data):
+    return average(data['/cmd_acc'], get_absolute_theta)
+
+
+@nav_metric
+def average_rotational_cmd_jerk(data):
+    return average(data['/cmd_jerk'], get_absolute_theta)
+
+
+@nav_metric
+def max_translational_cmd_vel(data):
+    return metric_max(data['/cmd_vel_stamped'], get_absolute_x)
 
 
 @nav_metric
