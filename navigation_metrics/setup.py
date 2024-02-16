@@ -19,5 +19,6 @@ setup(
     tests_require=['pytest'],
     entry_points={'console_scripts': ['analyze_bag = navigation_metrics.analyze_bag:main',
                                       'analyze_bags = navigation_metrics.analyze_bags:main',
+                                      'list_metrics = navigation_metrics.list_metrics:main',
                                       ]},
 )
