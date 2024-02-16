@@ -15,6 +15,12 @@ def convert_to_trial(data):
 
 @nav_metric
 def time_to_start(data):
+    """
+    Number of seconds from when the goal pose was sent to the first moving command.
+
+    Units: seconds
+    Topics: /trial_goal_pose, /cmd_vel
+    """
     goals = data['/trial_goal_pose']
     goal_t = goals[0].t
     cmds = data['/cmd_vel']
@@ -27,6 +33,12 @@ def time_to_start(data):
 
 @nav_metric
 def completed(data):
+    """
+    Whether the navigation action successfully completed.
+
+    Units: Boolean
+    Topics: /navigation_result
+    """
     results = data['/navigation_result']
     if not results:
         return False
@@ -35,4 +47,9 @@ def completed(data):
 
 @nav_metric
 def total_time(data):
+    """
+    The total time of the trial
+
+    Units: seconds
+    """
     return data.length()

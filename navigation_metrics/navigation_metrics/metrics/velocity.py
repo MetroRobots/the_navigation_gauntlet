@@ -86,76 +86,166 @@ def get_absolute_theta(bmsg):
 
 @nav_metric
 def average_translational_velocity(data):
+    """
+    The mean translational velocity of the robot
+
+    Units: meters / second
+    Topics: /actual_velocity or /path2d
+    """
     return average(data['/actual_velocity'], get_absolute_x)
 
 
 @nav_metric
 def average_translational_acceleration(data):
+    """
+    The mean translational acceleration of the robot
+
+    Units: meters / second / second
+    Topics: /actual_velocity or /path2d
+    """
     return average(data['/actual_acceleration'], get_absolute_x)
 
 
 @nav_metric
 def average_translational_jerk(data):
+    """
+    The mean translational jerk of the robot
+
+    Units: meters / second / second / second
+    Topics: /actual_velocity or /path2d
+    """
     return average(data['/actual_jerk'], get_absolute_x)
 
 
 @nav_metric
 def average_rotational_velocity(data):
+    """
+    The mean rotational velocity of the robot
+
+    Units: radians / second
+    Topics: /actual_velocity or /path2d
+    """
     return average(data['/actual_velocity'], get_absolute_theta)
 
 
 @nav_metric
 def average_rotational_acceleration(data):
+    """
+    The mean rotational acceleration of the robot
+
+    Units: radians / second / second
+    Topics: /actual_velocity or /path2d
+    """
     return average(data['/actual_acceleration'], get_absolute_theta)
 
 
 @nav_metric
 def average_rotational_jerk(data):
+    """
+    The mean rotational jerk of the robot
+
+    Units: radians / second / second / second
+    Topics: /actual_velocity or /path2d
+    """
     return average(data['/actual_jerk'], get_absolute_theta)
 
 
 @nav_metric
 def max_translational_velocity(data):
+    """
+    The maximum translational velocity of the robot
+
+    Units: meters / second
+    Topics: /actual_velocity or /path2d
+    """
     return metric_max(data['/actual_velocity'], get_absolute_x)
 
 
 @nav_metric
 def average_translational_cmd_vel(data):
+    """
+    The mean translational velocity sent as a command
+
+    Units: meters / second
+    Topics: /cmd_vel
+    """
     return average(data['/cmd_vel_stamped'], get_absolute_x)
 
 
 @nav_metric
 def average_translational_cmd_acc(data):
+    """
+    The mean translational acceleration sent as a command
+
+    Units: meters / second / second
+    Topics: /cmd_vel
+    """
     return average(data['/cmd_acc'], get_absolute_x)
 
 
 @nav_metric
 def average_translational_cmd_jerk(data):
+    """
+    The mean translational jerk sent as a command
+
+    Units: meters / second / second
+    Topics: /cmd_vel
+    """
     return average(data['/cmd_jerk'], get_absolute_x)
 
 
 @nav_metric
 def average_rotational_cmd_vel(data):
+    """
+    The mean rotational velocity sent as a command
+
+    Units: radians / second
+    Topics: /cmd_vel
+    """
     return average(data['/cmd_vel_stamped'], get_absolute_theta)
 
 
 @nav_metric
 def average_rotational_cmd_acc(data):
+    """
+    The mean rotational velocity sent as a command
+
+    Units: radians / second / second
+    Topics: /cmd_vel
+    """
     return average(data['/cmd_acc'], get_absolute_theta)
 
 
 @nav_metric
 def average_rotational_cmd_jerk(data):
+    """
+    The mean rotational velocity sent as a command
+
+    Units: radians / second / second / second
+    Topics: /cmd_vel
+    """
     return average(data['/cmd_jerk'], get_absolute_theta)
 
 
 @nav_metric
 def max_translational_cmd_vel(data):
+    """
+    The maximum translational velocity sent as a command
+
+    Units: meters / second
+    Topics: /cmd_vel
+    """
     return metric_max(data['/cmd_vel_stamped'], get_absolute_x)
 
 
 @nav_metric
 def time_not_moving(data, x_threshold=0.1, theta_threshold=0.1):
+    """
+    The total time where the velocity was below a certain threshold
+
+    Units: seconds
+    Topics: /actual_velocity or /path2d
+    """
     total = 0.0
     start = None
     for t, msg in data['/actual_velocity']:

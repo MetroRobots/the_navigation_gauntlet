@@ -95,6 +95,12 @@ def pose_to_goal_distance(data):
 
 @nav_metric
 def angle_to_goal(data):
+    """
+    Angle to the goal at the end of the trial
+
+    Units: Radians
+    Topics: /trial_goal_pose_2d /path2d
+    """
     goals = data['/trial_goal_pose_2d']
     path = data['/path2d']
     return abs(shortest_angular_distance(goals[0].msg.pose.theta, path[-1].msg.pose.theta))
@@ -110,6 +116,12 @@ def distance_to_goal(data):
 
 @nav_metric
 def path_length(data):
+    """
+    Length of the path taken over the entire trial.
+
+    Units: Meters
+    Topics: /path
+    """
     total = 0.0
     prev_point = None
     for o in data['/path']:
@@ -124,6 +136,12 @@ def path_length(data):
 
 @nav_metric
 def straight_line_efficiency(data):
+    """
+    The ratio of the straight line connecting the beginning and ending of the path to the actual path length
+
+    Units: Float [0, 1]
+    Topics: /path
+    """
     pl = path_length(data)
     path = data['/path']
     min_d = pose_stamped_distance(path[-1].msg, path[0].msg)
@@ -177,6 +195,12 @@ def shortest_path_calculation(data):
 
 @nav_metric
 def efficiency(data):
+    """
+    The ratio of the shortest possible path (given obstacles) to the actual path length
+
+    Units: Float [0, 1]
+    Topics: /path, /polygon_map
+    """
     pl = path_length(data)
 
     op = shortest_path_calculation(data)

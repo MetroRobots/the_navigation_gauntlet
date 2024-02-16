@@ -29,7 +29,13 @@ def clearing_distance(data):
 
 @nav_metric
 def total_collisions(data):
-    collision_topics = data.get_topics_by_type('collision_msgs/msg/Collisions')
+    """
+    The number of collisions detected.
+
+    Units: Count
+    Topic Types: collision_log_msgs/NamedCollisions
+    """
+    collision_topics = data.get_topics_by_type('collision_log_msgs/msg/NamedCollisions')
     total = 0
     for topic in collision_topics:
         for t, msg in data[topic]:

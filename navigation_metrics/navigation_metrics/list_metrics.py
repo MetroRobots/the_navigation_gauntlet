@@ -17,10 +17,15 @@ def main():
         click.secho(')')
 
         if metric_fne.__doc__:
-            lines = metric_fne.__doc__.split('\n')
+            lines = [line.strip() for line in metric_fne.__doc__.split('\n')]
+            while lines and not lines[0]:
+                lines.pop(0)
+            while lines and not lines[-1]:
+                lines.pop()
+
             if not args.verbose:
                 lines = lines[:1]
             for line in lines:
-                click.secho(f'\t{line.strip()}', fg='cyan')
+                click.secho(f'\t{line}', fg='cyan')
 
         click.secho('')
