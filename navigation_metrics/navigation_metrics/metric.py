@@ -1,9 +1,10 @@
 import collections
 
 _nav_metrics = collections.OrderedDict()
+_nav_metric_sets = {}
 
 
-# decorator definition
+# decorator definitions
 def nav_metric(f):
     """A nav metric is defined as a function that takes a FlexibleBag as a parameter and
        can return either a simple datatype (in which case the metric's name is assumed to be the same
@@ -12,8 +13,23 @@ def nav_metric(f):
     return f
 
 
+def nav_metric_set(suffixes):
+    """A nav metric set is a function that takes a FlexibleBag as a parameter and returns
+       a dictionary of metric names to simple datatypes."""
+    def inner_decorator(f):
+        _nav_metrics[f.__name__] = f
+        _nav_metric_sets[f.__name__] = suffixes
+        print(f.__name__, suffixes)
+        return f
+    return inner_decorator
+
+
 def get_metrics():
     return _nav_metrics
+
+
+def get_metric_set_info(name):
+    return _nav_metric_sets.get(name)
 
 
 def find_downstream_dependencies(target_package_name='navigation_metrics'):

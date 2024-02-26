@@ -10,7 +10,7 @@ from std_msgs.msg import Float32
 from polygon_utils import make_point
 from polygon_utils.shortest_path import shortest_path
 
-from navigation_metrics.metric import nav_metric
+from navigation_metrics.metric import nav_metric, nav_metric_set
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
 from navigation_metrics.util import pose_stamped_distance, pose2d_distance, point_distance, metric_final
 from navigation_metrics.util import min_max_avg_d
@@ -106,8 +106,14 @@ def angle_to_goal(data):
     return abs(shortest_angular_distance(goals[0].msg.pose.theta, path[-1].msg.pose.theta))
 
 
-@nav_metric
+@nav_metric_set(['min', 'max', 'avg', 'final'])
 def distance_to_goal(data):
+    """
+    The minimum/maximum/average/final distance to the goal.
+
+    Units: meters
+    Topics: /distance_to_goal
+    """
     distances = data['/distance_to_goal']
     metrics = min_max_avg_d(distances)
     metrics['final'] = metric_final(distances)

@@ -2,7 +2,7 @@ from std_msgs.msg import Float32
 
 from polygon_utils.shapely_lib import polygon_from_msg, point_from_msg
 
-from navigation_metrics.metric import nav_metric
+from navigation_metrics.metric import nav_metric, nav_metric_set
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
 from navigation_metrics.util import min_max_avg_d
 
@@ -22,8 +22,14 @@ def calculate_obstacle_clearance(data):
     return seq
 
 
-@nav_metric
+@nav_metric_set(['min', 'max', 'avg'])
 def clearing_distance(data):
+    """
+    The minimum/maximum/average distance to the nearest obstacle
+
+    Units: meters
+    Topics: /obstacle_clearance
+    """
     return min_max_avg_d(data['/obstacle_clearance'])
 
 
