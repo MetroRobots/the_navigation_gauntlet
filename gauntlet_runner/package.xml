@@ -6,8 +6,11 @@
   <description>Utilities for running a series of simulated navigation tasks</description>
   <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
   <license>BSD</license>
+  <depend>action_msgs</depend>
   <depend>ament_index_python</depend>
+  <depend>geometry_msgs</depend>
   <depend>nav2_msgs</depend>
+  <depend>nav_2d_msgs</depend>
   <depend>rclpy</depend>
   <depend>ros2launch</depend>
   <depend>simple_actions</depend>
