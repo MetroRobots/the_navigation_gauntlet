@@ -1,7 +1,7 @@
 import argparse
 import click
 from . import get_metrics, global_metric_search
-from .metric import get_metric_set_info
+from .metric import get_metric_set_info, get_parameter_dependencies, get_metric_parameter_defaults
 
 
 def main():
@@ -13,6 +13,7 @@ def main():
     global_metric_search()
 
     missing = []
+    param_defaults = get_metric_parameter_defaults()
 
     for metric_name, metric_fne in get_metrics().items():
         set_info = get_metric_set_info(metric_name)
@@ -44,8 +45,15 @@ def main():
         else:
             missing.append(f'{metric_fne.__module__}/{metric_name}')
 
+        params = get_parameter_dependencies(metric_name)
+        if params:
+            click.secho('\tParameters:', fg='blue')
+            for param in params:
+                click.secho(f'\t  {param:20} (default={param_defaults[param]})', fg='blue')
+
         click.secho('')
 
-    if args.debug:
+    if args.debug and missing:
+        click.secho('Metrics missing docstring:', fg='red')
         for m in missing:
             click.secho(m, fg='red')

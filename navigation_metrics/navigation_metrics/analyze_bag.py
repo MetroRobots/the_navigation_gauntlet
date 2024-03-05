@@ -5,6 +5,7 @@ import sys
 import yaml
 
 from . import FlexibleBag, get_metrics, global_metric_search, MissingTopicException
+from .metric import get_metric_parameter_defaults, get_parameter_dependencies
 from .parameters import get_all_parameters
 from .window import WindowBag, TimeWindow
 
@@ -19,12 +20,16 @@ class ComputeMode(IntEnum):
 exception_warnings = set()
 
 
-def should_compute(name, metric_names, compute_mode, computed_values, errors):
+def should_compute(name, metric_names, compute_mode, computed_values, errors, cached_parameters):
     if metric_names is not None and name not in metric_names:
         return False
 
     if compute_mode == ComputeMode.EVERYTHING or compute_mode == ComputeMode.CLEAN:
         return True
+
+    for param_name in get_parameter_dependencies(name):
+        if computed_values['parameters'].get(param_name) != cached_parameters.get(param_name):
+            return True
 
     short_name = name.partition('/')[0]
 
@@ -56,8 +61,12 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
     else:
         computed_values = {}
     errors = computed_values.pop('errors', {})
+    cached_parameters = computed_values.pop('parameters', {})
 
     computed_values['parameters'] = get_all_parameters(bag_path)
+    for k, v in get_metric_parameter_defaults().items():
+        if k not in computed_values['parameters']:
+            computed_values['parameters'][k] = v
 
     if compute_mode == ComputeMode.NOTHING:
         return computed_values
@@ -71,11 +80,14 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
     data = WindowBag(bag, window)
 
     for name, metric in get_metrics().items():
-        if not should_compute(name, metric_names, compute_mode, computed_values, errors):
+        if not should_compute(name, metric_names, compute_mode, computed_values, errors, cached_parameters):
             continue
 
+        metric_params = {}
+        for param_name in get_parameter_dependencies(name):
+            metric_params[param_name] = computed_values['parameters'][param_name]
         try:
-            m = metric(data)
+            m = metric(data, **metric_params)
 
             if name in errors:
                 del errors[name]

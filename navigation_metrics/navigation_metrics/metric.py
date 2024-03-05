@@ -1,7 +1,11 @@
 import collections
+import inspect
 
 _nav_metrics = collections.OrderedDict()
 _nav_metric_sets = {}
+
+_parameter_defaults = {}
+_parameter_dependencies = {}
 
 
 # decorator definitions
@@ -10,6 +14,19 @@ def nav_metric(f):
        can return either a simple datatype (in which case the metric's name is assumed to be the same
        as the function's name, or can return a dictionary of metric names to simple datatypes."""
     _nav_metrics[f.__name__] = f
+
+    argspec = inspect.getargspec(f)
+    # First parameter is always data
+    if len(argspec.args) > 1:
+        names = []
+        if len(argspec.args) != len(argspec.defaults) + 1:
+            raise RuntimeError(f'Function {f.__name__} does not have defaults for parameters specified properly')
+        for param_name, param_default in zip(argspec.args[1:], argspec.defaults):
+            if param_name in _parameter_defaults and _parameter_defaults[param_name] != param_default:
+                raise RuntimeError(f'Function {f.__name__} has a conflicting default value for parameter {param_name}')
+            _parameter_defaults[param_name] = param_default
+            names.append(param_name)
+        _parameter_dependencies[f.__name__] = names
     return f
 
 
@@ -19,7 +36,6 @@ def nav_metric_set(suffixes):
     def inner_decorator(f):
         _nav_metrics[f.__name__] = f
         _nav_metric_sets[f.__name__] = suffixes
-        print(f.__name__, suffixes)
         return f
     return inner_decorator
 
@@ -30,6 +46,14 @@ def get_metrics():
 
 def get_metric_set_info(name):
     return _nav_metric_sets.get(name)
+
+
+def get_metric_parameter_defaults():
+    return _parameter_defaults
+
+
+def get_parameter_dependencies(name):
+    return _parameter_dependencies.get(name, [])
 
 
 def find_downstream_dependencies(target_package_name='navigation_metrics'):
