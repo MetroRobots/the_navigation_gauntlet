@@ -11,46 +11,57 @@ from action_msgs.msg import GoalStatus
 class TrialRunner(Node):
     def __init__(self):
         super().__init__('trial_runner')
+        self.declare_parameter('send_goal', True)
         self.declare_parameter('goal_pose_x', 0.0)
         self.declare_parameter('goal_pose_y', 0.0)
         self.declare_parameter('goal_pose_yaw', 0.0)
+        self.declare_parameter('timeout', 600.0)
         self.completed = None
         self.logger = self.get_logger()
         self.timer = None
+        self.timeout_timer = None
 
-        self.nav_action_client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
-        printed = False
-        while not self.nav_action_client.wait_for_server(timeout_sec=5.0):
-            if not printed:
-                self.logger.warn('Waiting for /navigate_to_pose')
-                printed = True
-        if printed:
-            self.logger.info('Connected to /navigate_to_pose')
-
-        self.pub_3d = self.create_publisher(PoseStamped, '/trial_goal_pose', 1)
-        self.pub_2d = self.create_publisher(Pose2DStamped, '/trial_goal_pose_2d', 1)
         self.pub_status = self.create_publisher(GoalStatus, '/navigation_result', 1)
 
-        # Construct Goal
-        self.goal_msg = NavigateToPose.Goal()
-        self.goal_msg.pose.header.frame_id = 'map'
-        self.goal_msg.pose.pose.position.x = self.get_parameter('goal_pose_x').value
-        self.goal_msg.pose.pose.position.y = self.get_parameter('goal_pose_y').value
+        self.should_send_goal = self.get_parameter('send_goal').value
 
-        yaw = self.get_parameter('goal_pose_yaw').value
-        quat = quaternion_from_euler(0, 0, yaw)
-        self.goal_msg.pose.pose.orientation.w = quat[0]
-        self.goal_msg.pose.pose.orientation.x = quat[1]
-        self.goal_msg.pose.pose.orientation.y = quat[2]
-        self.goal_msg.pose.pose.orientation.z = quat[3]
+        if self.should_send_goal:
+            self.nav_action_client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
+            printed = False
+            while not self.nav_action_client.wait_for_server(timeout_sec=5.0):
+                if not printed:
+                    self.logger.warn('Waiting for /navigate_to_pose')
+                    printed = True
+            if printed:
+                self.logger.info('Connected to /navigate_to_pose')
 
-        self.pose2d = Pose2DStamped()
-        self.pose2d.header = self.goal_msg.pose.header
-        self.pose2d.pose.x = self.goal_msg.pose.pose.position.x
-        self.pose2d.pose.y = self.goal_msg.pose.pose.position.y
-        self.pose2d.pose.theta = yaw
+            self.pub_3d = self.create_publisher(PoseStamped, '/trial_goal_pose', 1)
+            self.pub_2d = self.create_publisher(Pose2DStamped, '/trial_goal_pose_2d', 1)
 
-        self.send_goal()
+            # Construct Goal
+            self.goal_msg = NavigateToPose.Goal()
+            self.goal_msg.pose.header.frame_id = 'map'
+            self.goal_msg.pose.pose.position.x = self.get_parameter('goal_pose_x').value
+            self.goal_msg.pose.pose.position.y = self.get_parameter('goal_pose_y').value
+
+            yaw = self.get_parameter('goal_pose_yaw').value
+            quat = quaternion_from_euler(0, 0, yaw)
+            self.goal_msg.pose.pose.orientation.w = quat[0]
+            self.goal_msg.pose.pose.orientation.x = quat[1]
+            self.goal_msg.pose.pose.orientation.y = quat[2]
+            self.goal_msg.pose.pose.orientation.z = quat[3]
+
+            self.pose2d = Pose2DStamped()
+            self.pose2d.header = self.goal_msg.pose.header
+            self.pose2d.pose.x = self.goal_msg.pose.pose.position.x
+            self.pose2d.pose.y = self.goal_msg.pose.pose.position.y
+            self.pose2d.pose.theta = yaw
+
+            self.send_goal()
+
+        self.timeout_length = self.get_parameter('timeout').value
+        if self.timeout_length > 0.0:
+            self.timeout_timer = self.create_timer(self.timeout_length, self._timeout_cb)
 
     def send_goal(self):
         self._goal_future = self.nav_action_client.send_goal_async(self.goal_msg)
@@ -82,7 +93,17 @@ class TrialRunner(Node):
         status_msg.status = result.status
         self.pub_status.publish(status_msg)
 
+        if self.timeout_timer:
+            self.timeout_timer.cancel()
+
         self.logger.info('Navigation trial complete!')
+        rclpy.shutdown()
+
+    def _timeout_cb(self):
+        status_msg = GoalStatus()
+        status_msg.status = GoalStatus.STATUS_ABORTED
+        self.pub_status.publish(status_msg)
+        self.logger.info(f'Navigation trial timed out after {self.timeout_length} seconds.')
         rclpy.shutdown()
 
 
