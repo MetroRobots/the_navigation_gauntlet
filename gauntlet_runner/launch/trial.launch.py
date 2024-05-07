@@ -1,8 +1,9 @@
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, EmitEvent, RegisterEventHandler
+from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -33,7 +34,8 @@ def generate_launch_description():
     ld.add_action(
         DeclareLaunchArgument(
             'nav_config_package',
-            description='The name of the package from which to launch bringup.launch.py'
+            default_value='',
+            description='The name of the package from which to launch bringup.launch.py',
         )
     )
     ld.add_action(
@@ -48,13 +50,15 @@ def generate_launch_description():
         [FindPackageShare(LaunchConfiguration('nav_config_package')), '/launch/bringup.launch.py'],
         launch_arguments=[
             ('bonus_nav_configuration', LaunchConfiguration('bonus_nav_configuration')),
-        ]
+        ],
+        condition=IfCondition(PythonExpression(['len("', LaunchConfiguration('nav_config_package'), '") > 0'])),
     ))
 
     ld.add_action(
         DeclareLaunchArgument(
             'trial_config_path',
-            description='The path to the parameter file for the run_trial node'
+            description='The path to the parameter file for the run_trial node',
+            default_value='',
         )
     )
 
