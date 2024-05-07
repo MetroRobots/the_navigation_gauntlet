@@ -1,4 +1,4 @@
-# The Navigation Gauntlet
+# ![The Navigation Gauntlet](NavigationGauntlet.png)
 
 An open framework for testing navigation algorithms using different robots and different simulators.
 
