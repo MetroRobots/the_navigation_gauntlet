@@ -1,8 +1,8 @@
 def get_values(pconfig, default_n=5):
-    if isinstance(pconfig, list):
-        return pconfig
-    elif not isinstance(pconfig, dict):
-        return [pconfig]
+    if 'values' in pconfig:
+        return pconfig['values']
+    elif 'value' in pconfig:
+        return [pconfig['value']]
 
     if pconfig.get('type') == 'bool':
         return [False, True]
@@ -18,8 +18,9 @@ def get_values(pconfig, default_n=5):
 
 def explore_parameter_space(parameters, default_n=5):
     configs = [{}]
-    for name, pconfig in sorted(parameters.items()):
+    for pconfig in parameters:
         new_configs = []
+        name = pconfig['name']
         for value in get_values(pconfig, default_n):
             for config in configs:
                 new_config = dict(config)
@@ -27,3 +28,14 @@ def explore_parameter_space(parameters, default_n=5):
                 new_configs.append(new_config)
         configs = new_configs
     return configs
+
+
+def format_value(pconfig, value, include_name=True):
+    if 'format' in pconfig:
+        fv = pconfig['format'].format(value)
+    else:
+        fv = str(value)
+    if include_name:
+        return pconfig['name'].partition('/')[2] + '_' + fv
+    else:
+        return fv

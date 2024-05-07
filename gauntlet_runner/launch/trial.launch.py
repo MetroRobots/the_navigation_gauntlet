@@ -18,8 +18,7 @@ def generate_launch_description():
     )
     ld.add_action(
         DeclareLaunchArgument(
-            'world_path',
-            default_value='',
+            'sim_config_path',
             description='The path to a configuration file for the simulator.'
         )
     )
@@ -27,7 +26,7 @@ def generate_launch_description():
     ld.add_action(IncludeLaunchDescription(
         [FindPackageShare(LaunchConfiguration('simulator_package')), '/launch/simulator_bringup.launch.py'],
         launch_arguments=[
-            ('world_path', LaunchConfiguration('world_path')),
+            ('config_path', LaunchConfiguration('sim_config_path')),
         ]
     ))
 
