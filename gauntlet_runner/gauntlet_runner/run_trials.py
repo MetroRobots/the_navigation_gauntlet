@@ -63,6 +63,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('trials_config_path', type=pathlib.Path)
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing data')
+    parser.add_argument('-g', '--gui', action='store_true', help='show the graphics')
     args = parser.parse_args()
 
     trial_launch = get_share_file_path_from_package(
@@ -105,6 +106,9 @@ def main():
         trial_data_config_path = write_temp_parameter_file(data_config)
         launch_arguments.append(f'record_config_path:={trial_data_config_path.name}')
 
+        if args.gui:
+            launch_arguments.append('gui:=True')
+
         # Load trial args
         trial_config_path = write_temp_parameter_file(trial_config)
         launch_arguments.append(f'trial_config_path:={trial_config_path.name}')
@@ -117,7 +121,11 @@ def main():
 
         # Save Metric Params
         params_path = bag_path / 'metric_params.yaml'
-        yaml.safe_dump({'sim': sim_config, 'data': data_config, 'trial': trial_config}, open(params_path, 'w'))
+        metric_params = {}
+        for ns, config in {'sim': sim_config, 'data': data_config, 'trial': trial_config}.items():
+            for k, v in config.items():
+                metric_params[f'{ns}/{k}'] = v
+        yaml.safe_dump(metric_params, open(params_path, 'w'))
 
         # Remove temp data
         trial_config_path.close()

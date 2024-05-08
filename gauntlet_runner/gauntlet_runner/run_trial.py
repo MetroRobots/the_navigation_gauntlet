@@ -6,6 +6,7 @@ from tf_transformations import quaternion_from_euler
 from geometry_msgs.msg import PoseStamped
 from nav_2d_msgs.msg import Pose2DStamped
 from action_msgs.msg import GoalStatus
+from rosgraph_msgs.msg import Clock
 
 
 class TrialRunner(Node):
@@ -58,10 +59,21 @@ class TrialRunner(Node):
             self.pose2d.pose.theta = yaw
 
             self.send_goal()
+        else:
+            self.got_clock = False
+            self.clock_sub = self.create_subscription(Clock, '/clock', self.clock_cb, 1)
+            while not self.got_clock:
+                self.logger.info('waiting for clock')
+                rclpy.spin_once(self)
 
         self.timeout_length = self.get_parameter('timeout').value
         if self.timeout_length > 0.0:
             self.timeout_timer = self.create_timer(self.timeout_length, self._timeout_cb)
+
+    def clock_cb(self, msg):
+        self.got_clock = True
+        self.clock_sub.destroy()
+        self.clock_sub = None
 
     def send_goal(self):
         self._goal_future = self.nav_action_client.send_goal_async(self.goal_msg)
