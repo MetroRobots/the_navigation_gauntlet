@@ -61,14 +61,17 @@ class Dimension:
             return
 
         # Look in both metrics and parameters
-        if self.base_name in metric_d:
-            value = metric_d[self.base_name]
-        elif self.base_name in metric_d.get('parameters', {}):
-            value = metric_d['parameters'][self.base_name]
+        for key in [self.base_name, self.name]:
+            if key in metric_d:
+                value = metric_d[key]
+                break
+            elif key in metric_d.get('parameters', {}):
+                value = metric_d['parameters'][key]
+                break
         else:
             value = None
 
-        if self.extension and value:
+        if self.extension and isinstance(value, dict):
             value = value[self.extension]
 
         if self.alter_fne and value is not None:

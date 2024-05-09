@@ -1,6 +1,7 @@
 import argparse
 import collections
 from matplotlib.pyplot import subplots, show
+import os
 import pathlib
 
 from navigation_metrics import FlexibleBag, global_metric_search
@@ -30,11 +31,15 @@ def plot(bag_paths, datums):
     global_metric_search()
     xs = collections.defaultdict(lambda: collections.defaultdict(list))
     ys = collections.defaultdict(lambda: collections.defaultdict(list))
+    common_prefix = os.path.commonprefix([p.parts for p in bag_paths])
+
     for bag_path in bag_paths:
         bag = FlexibleBag(bag_path, write_mods=False)
         x, y = [datum.get_sequence(bag) for datum in datums]
-        xs[None][bag_path.stem] = x
-        ys[None][bag_path.stem] = y
+        unique_bit = bag_path.parts[len(common_prefix):]
+        key = str(pathlib.Path(*unique_bit))
+        xs[None][key] = x
+        ys[None][key] = y
 
     num_plots = len(xs)
     fig, ax_v = subplots(num_plots, sharex=True, sharey=True)

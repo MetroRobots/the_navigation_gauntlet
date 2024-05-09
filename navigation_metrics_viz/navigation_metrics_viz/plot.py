@@ -18,6 +18,7 @@ def main():
     parser.add_argument('-p', '--plots-axis')
     parser.add_argument('-s', '--series-axis')
     parser.add_argument('-f', '--filter-axes', nargs='*', default=[])
+    parser.add_argument('-l', '--log', action='store_true')
     args = parser.parse_args()
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
@@ -73,6 +74,8 @@ def main():
         axes = ax_v
 
     for p_v, ax in zip(xs.keys(), axes):
+        if args.log:
+            ax.set_xscale('log')
         title = dimensions['p'].format_name(p_v)
         if title:
             ax.set_title(f'{title} (N={counts[p_v]})')
