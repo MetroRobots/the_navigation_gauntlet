@@ -52,9 +52,12 @@ def get_nav_gauntlet_params(package_name):
     return {}
 
 
-def write_temp_parameter_file(parameters, node_name='/**'):
+def write_temp_parameter_file(parameters, node_name='/**', ros_params=True):
     temp_config_path = tempfile.NamedTemporaryFile()
-    yaml_data = {node_name: {'ros__parameters': parameters}}
+    if ros_params:
+        yaml_data = {node_name: {'ros__parameters': parameters}}
+    else:
+        yaml_data = parameters
     yaml.safe_dump(yaml_data, open(temp_config_path.name, 'w'))
     return temp_config_path
 
@@ -98,7 +101,7 @@ def main():
         sim_pkg_config = get_nav_gauntlet_params(simulator_pkg)
         data_config['topics'] += sim_pkg_config.get('topics', [])
 
-        trial_sim_config_path = write_temp_parameter_file(simulator_pkg)
+        trial_sim_config_path = write_temp_parameter_file(sim_config, ros_params=False)
         launch_arguments.append(f'sim_config_path:={trial_sim_config_path.name}')
 
         # Load data args
