@@ -52,7 +52,7 @@ def get_standard_window(bag):
         pass
 
 
-def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mode=ComputeMode.NEEDED):
+def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mode=ComputeMode.NEEDED, use_window=True):
     """Compute all known metrics for the given bag and return results as a dictionary"""
     assert bag_path.is_dir()
     cache_path = bag_path / 'navigation_metrics.yaml'
@@ -73,11 +73,11 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
 
     bag = FlexibleBag(bag_path, write_mods=False)
 
-    window = get_standard_window(bag)
-    if not window:
-        return computed_values
-
-    data = WindowBag(bag, window)
+    if use_window:
+        window = get_standard_window(bag)
+        data = WindowBag(bag, window)
+    else:
+        data = bag
 
     for name, metric in get_metrics().items():
         if not should_compute(name, metric_names, compute_mode, computed_values, errors, cached_parameters):
@@ -117,12 +117,14 @@ def main():
     parser.add_argument('bag_path', type=pathlib.Path)
     parser.add_argument('-i', '--ignore-errors', action='store_true')
     parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode], default='needed')
+    parser.add_argument('-n', '--no-window', action='store_true')
     args = parser.parse_args()
 
     global_metric_search()
 
     compute_mode = ComputeMode[args.compute_mode.upper()]
-    metrics = compute_metrics(args.bag_path, ignore_errors=args.ignore_errors, compute_mode=compute_mode)
+    metrics = compute_metrics(args.bag_path, ignore_errors=args.ignore_errors,
+                              compute_mode=compute_mode, use_window=not args.no_window)
     if not metrics:
         print('No metrics computed.')
         return

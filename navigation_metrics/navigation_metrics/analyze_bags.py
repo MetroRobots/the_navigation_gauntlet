@@ -25,10 +25,11 @@ def find_bags(folder_path):
                     queue.append(subpath)
 
 
-def analyze_bags(folder_path, compute_mode, metric_names=None):
+def analyze_bags(folder_path, compute_mode, metric_names=None, use_window=True):
     data = {}
     for bag_path in find_bags(folder_path):
-        metrics = compute_metrics(bag_path, metric_names, ignore_errors=True, compute_mode=compute_mode)
+        metrics = compute_metrics(bag_path, metric_names, ignore_errors=True,
+                                  compute_mode=compute_mode, use_window=use_window)
         data[bag_path] = metrics
 
     return data
@@ -42,6 +43,7 @@ def main():
     parser.add_argument('-d', '--dimension', type=Dimension, nargs='?', default='')
     parser.add_argument('-s', '--skip-dimensions', nargs='*')
     parser.add_argument('-i', '--include-dimensions', nargs='*')
+    parser.add_argument('-n', '--no-window', action='store_true')
     args = parser.parse_args()
 
     global_metric_search()
@@ -60,7 +62,7 @@ def main():
             raise RuntimeError("Please don't use include and skip dimensions")
         my_metrics = [metric for metric in get_metrics().keys() if metric not in args.skip_dimensions]
 
-    data = analyze_bags(args.folder, compute_mode, my_metrics)
+    data = analyze_bags(args.folder, compute_mode, my_metrics, use_window=not args.no_window)
 
     base_path = str(args.folder.resolve()) + '/'
     for path, metrics in sorted(data.items()):
