@@ -218,11 +218,14 @@ class FlexibleBag:
     def get_parameter(self, name, default_value=None, namespace=''):
         return get_parameter(self.path, name, default_value, namespace)
 
+    def length(self):
+        return self.metadata['duration']['nanoseconds'] / 1e9
+
     def get_start_time(self):
         return self.metadata['starting_time']['nanoseconds_since_epoch'] / 1e9
 
     def get_end_time(self):
-        return self.get_start_time() + self.metadata['duration']['nanoseconds'] / 1e9
+        return self.get_start_time() + self.length()
 
     def save(self, output_path):
         """Save results to file"""
