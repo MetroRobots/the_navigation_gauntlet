@@ -44,10 +44,12 @@ def get_standard_window(bag):
         starts = bag['/trial_goal_pose']
         ends = bag['/navigation_result']
 
-        if not starts or not ends:
+        if not starts:
             return
-
-        return TimeWindow(starts[0].t, ends[0].t)
+        elif not ends:
+            return TimeWindow(starts[0].t, bag.get_end_time())
+        else:
+            return TimeWindow(starts[0].t, ends[0].t)
     except MissingTopicException:
         pass
 
