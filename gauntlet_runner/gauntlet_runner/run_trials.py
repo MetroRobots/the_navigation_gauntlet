@@ -2,6 +2,7 @@ import argparse
 from ament_index_python.packages import get_package_share_path, PackageNotFoundError
 from ros2launch.api import get_share_file_path_from_package, launch_a_launch_file
 from .exploration import explore_parameter_space, format_value
+from resource_retriever import get_filename
 import tempfile
 import pathlib
 import yaml
@@ -99,10 +100,14 @@ def main():
         simulator_pkg = sim_config['pkg']
         launch_arguments.append(f'simulator_package:={simulator_pkg}')
         sim_pkg_config = get_nav_gauntlet_params(simulator_pkg)
-        data_config['topics'] += sim_pkg_config.get('topics', [])
 
         trial_sim_config_path = write_temp_parameter_file(sim_config, ros_params=False)
         launch_arguments.append(f'sim_config_path:={trial_sim_config_path.name}')
+
+        additional_data = []
+        for config in [sim_pkg_config]:
+            data_config['topics'] += config.get('topics', [])
+            additional_data += config.get('additional_data', [])
 
         # Load data args
         data_config['record_path'] = str(bag_path)
@@ -121,6 +126,17 @@ def main():
             launch_file_path=trial_launch,
             launch_file_arguments=launch_arguments,
         )
+
+        bag_path.mkdir(exist_ok=True, parents=True)
+
+        # Save additional data
+        for data_path in additional_data:
+            data_f = get_filename(data_path, False)
+            # https://stackoverflow.com/a/51108375
+            p = pathlib.Path(data_f).expanduser()
+            parts = p.parts[p.is_absolute():]
+            for resolved in pathlib.Path(p.root).glob(str(pathlib.Path(*parts))):
+                resolved.rename(bag_path / resolved.name)
 
         # Save Metric Params
         params_path = bag_path / 'metric_params.yaml'
