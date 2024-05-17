@@ -105,6 +105,9 @@ def main():
         launch_arguments.append(f'simulator_package:={simulator_pkg}')
         sim_pkg_config = get_nav_gauntlet_params(simulator_pkg)
 
+        robot_name = sim_config['robot_name']
+        launch_arguments.append(f'robot_name:={robot_name}')
+
         trial_sim_config_path = write_temp_parameter_file(sim_config, ros_params=False)
         launch_arguments.append(f'sim_config_path:={trial_sim_config_path.name}')
 

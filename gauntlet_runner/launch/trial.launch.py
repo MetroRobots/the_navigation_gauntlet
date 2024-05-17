@@ -22,11 +22,18 @@ def generate_launch_description():
             description='The path to a configuration file for the simulator.'
         )
     )
+    ld.add_action(
+        DeclareLaunchArgument(
+            'robot_name',
+            description='The name of the robot in the simulator'
+        )
+    )
 
     ld.add_action(IncludeLaunchDescription(
         [FindPackageShare(LaunchConfiguration('simulator_package')), '/launch/simulator_bringup.launch.py'],
         launch_arguments=[
             ('config_path', LaunchConfiguration('sim_config_path')),
+            ('robot_name', LaunchConfiguration('robot_name')),
         ]
     ))
 
