@@ -87,7 +87,7 @@ def generate_launch_description():
     ld.add_action(RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=run_trial_node,
-            on_exit=EmitEvent(event=Shutdown())
+            on_exit=EmitEvent(event=Shutdown(reason='run trial node has completed'))
         ),
     ))
 

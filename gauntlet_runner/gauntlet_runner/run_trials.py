@@ -1,6 +1,10 @@
 import argparse
 from ament_index_python.packages import get_package_share_path, PackageNotFoundError
-from ros2launch.api import get_share_file_path_from_package, launch_a_launch_file
+from launch import LaunchService, LaunchDescription
+from launch.actions import IncludeLaunchDescription, RegisterEventHandler, OpaqueFunction
+from launch.event_handlers import OnShutdown
+from launch.substitutions import LocalSubstitution
+from ros2launch.api.api import get_share_file_path_from_package, parse_launch_arguments
 from .exploration import explore_parameter_space, format_value
 from resource_retriever import get_filename
 import tempfile
@@ -121,11 +125,34 @@ def main():
         trial_config_path = write_temp_parameter_file(trial_config)
         launch_arguments.append(f'trial_config_path:={trial_config_path.name}')
 
+        exited = False
+
         # Run The Trial
-        launch_a_launch_file(
-            launch_file_path=trial_launch,
-            launch_file_arguments=launch_arguments,
-        )
+        def shutdown_callback(context, reason_sub):
+            nonlocal exited
+            reason = reason_sub.perform(context)
+            if 'SIGINT' in str(reason):
+                exited = True
+            for i in range(10):
+                print(reason)
+
+        launch_service = LaunchService()
+        launch_description = LaunchDescription([
+            IncludeLaunchDescription(
+                trial_launch,
+                launch_arguments=parse_launch_arguments(launch_arguments),
+            ),
+            RegisterEventHandler(OnShutdown(
+                on_shutdown=[
+                    OpaqueFunction(
+                        function=shutdown_callback,
+                        args=[LocalSubstitution('event.reason')],
+                    ),
+                ]
+            ))
+        ])
+        launch_service.include_launch_description(launch_description)
+        launch_service.run()
 
         bag_path.mkdir(exist_ok=True, parents=True)
 
@@ -150,6 +177,9 @@ def main():
         trial_config_path.close()
         trial_data_config_path.close()
         trial_sim_config_path.close()
+
+        if exited:
+            break
 
 
 if __name__ == '__main__':
