@@ -7,6 +7,7 @@ from launch.substitutions import LocalSubstitution
 from ros2launch.api.api import get_share_file_path_from_package, parse_launch_arguments
 from .exploration import explore_parameter_space, format_value
 from resource_retriever import get_filename
+import shutil
 import tempfile
 import pathlib
 import yaml
@@ -92,7 +93,7 @@ def main():
 
         if bag_path.exists():
             if args.force:
-                bag_path.unlink()
+                shutil.rmtree(bag_path)
             else:
                 print(f'Skipping {bag_path}')
                 continue
