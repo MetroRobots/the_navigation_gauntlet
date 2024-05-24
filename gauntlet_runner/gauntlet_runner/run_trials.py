@@ -24,6 +24,7 @@ def get_record_path(root_path, trials_config, param_config):
 
 def get_parameters(trials_config, param_config):
     sim_config = dict(trials_config.get('sim', {}))
+    nav_config = dict(trials_config.get('nav', {}))
     data_config = dict(trials_config.get('data', {}))
     trial_config = dict(trials_config.get('trial', {}))
 
@@ -34,6 +35,8 @@ def get_parameters(trials_config, param_config):
 
         if ns == 'sim':
             sim_config[name] = value
+        elif ns == 'nav':
+            nav_config[name] = value
         elif ns == 'data':
             data_config[name] = value
         elif ns == 'trial':
@@ -44,7 +47,7 @@ def get_parameters(trials_config, param_config):
     if 'topics' not in data_config:
         data_config['topics'] = []
 
-    return sim_config, data_config, trial_config
+    return sim_config, nav_config, data_config, trial_config
 
 
 def get_nav_gauntlet_params(package_name):
@@ -60,10 +63,22 @@ def get_nav_gauntlet_params(package_name):
 
 def write_temp_parameter_file(parameters, node_name='/**', ros_params=True):
     temp_config_path = tempfile.NamedTemporaryFile()
+    output_values = {}
     if ros_params:
-        yaml_data = {node_name: {'ros__parameters': parameters}}
+        yaml_data = {node_name: {'ros__parameters': output_values}}
     else:
-        yaml_data = parameters
+        yaml_data = output_values
+
+    for full_key, value in parameters.items():
+        key_parts = full_key.split('/')
+        target = output_values
+        for key in key_parts[:-1]:
+            if key not in target:
+                target[key] = {}
+            target = target[key]
+        key = key_parts[-1]
+        target[key] = value
+
     yaml.safe_dump(yaml_data, open(temp_config_path.name, 'w'))
     return temp_config_path
 
@@ -98,7 +113,7 @@ def main():
                 print(f'Skipping {bag_path}')
                 continue
 
-        sim_config, data_config, trial_config = get_parameters(trials_config, param_config)
+        sim_config, nav_config, data_config, trial_config = get_parameters(trials_config, param_config)
         launch_arguments = []
 
         # Load simulator args
@@ -109,11 +124,21 @@ def main():
         robot_name = sim_config['robot_name']
         launch_arguments.append(f'robot_name:={robot_name}')
 
+        if 'pkg' in nav_config:
+            nav_pkg = nav_config.pop('pkg')
+            launch_arguments.append(f'nav_config_package:={nav_pkg}')
+            nav_pkg_config = get_nav_gauntlet_params(nav_pkg)
+        else:
+            nav_pkg_config = {}
+
         trial_sim_config_path = write_temp_parameter_file(sim_config, ros_params=False)
         launch_arguments.append(f'sim_config_path:={trial_sim_config_path.name}')
 
+        trial_nav_config_path = write_temp_parameter_file(nav_config, ros_params=False)
+        launch_arguments.append(f'nav_config_path:={trial_nav_config_path.name}')
+
         additional_data = []
-        for config in [sim_pkg_config]:
+        for config in [sim_pkg_config, nav_pkg_config]:
             data_config['topics'] += config.get('topics', [])
             additional_data += config.get('additional_data', [])
 
@@ -137,8 +162,6 @@ def main():
             reason = reason_sub.perform(context)
             if 'SIGINT' in str(reason):
                 exited = True
-            for i in range(10):
-                print(reason)
 
         launch_service = LaunchService()
         launch_description = LaunchDescription([
@@ -180,6 +203,7 @@ def main():
         # Remove temp data
         trial_config_path.close()
         trial_data_config_path.close()
+        trial_nav_config_path.close()
         trial_sim_config_path.close()
 
         if exited:

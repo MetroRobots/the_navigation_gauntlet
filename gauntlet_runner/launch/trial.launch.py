@@ -46,16 +46,16 @@ def generate_launch_description():
     )
     ld.add_action(
         DeclareLaunchArgument(
-            'bonus_nav_configuration',
+            'nav_config_path',
             default_value='',
-            description='TODO'
+            description='The path to a configuration file for the navigation launch'
         )
     )
 
     ld.add_action(IncludeLaunchDescription(
         [FindPackageShare(LaunchConfiguration('nav_config_package')), '/launch/bringup.launch.py'],
         launch_arguments=[
-            ('bonus_nav_configuration', LaunchConfiguration('bonus_nav_configuration')),
+            ('config_path', LaunchConfiguration('nav_config_path')),
         ],
         condition=IfCondition(PythonExpression(['len("', LaunchConfiguration('nav_config_package'), '") > 0'])),
     ))
