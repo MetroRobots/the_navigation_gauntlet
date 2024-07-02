@@ -134,7 +134,7 @@ class FlexibleBag:
         """
         Uses a greedy algorithm to match up messages from multiple topics to their closest neighbors
 
-        Does NOT necesssarily return all data from the topics.
+        Does NOT necessarily return all data from the topics.
         """
         seqs = {}
         shortest = None
