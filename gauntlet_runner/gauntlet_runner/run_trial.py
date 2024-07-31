@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from nav2_msgs.action import NavigateToPose
 from tf_transformations import quaternion_from_euler
 from geometry_msgs.msg import PoseStamped
@@ -16,11 +17,21 @@ class TrialRunner(Node):
         self.declare_parameter('goal_pose_x', 0.0)
         self.declare_parameter('goal_pose_y', 0.0)
         self.declare_parameter('goal_pose_yaw', 0.0)
+        self.declare_parameter('goal_frame', 'map')
         self.declare_parameter('timeout', 600.0)
         self.completed = None
         self.logger = self.get_logger()
         self.timer = None
         self.timeout_timer = None
+
+        latching_qos = QoSProfile(depth=1,
+                                  durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
+
+        self.got_clock = False
+        self.clock_sub = self.create_subscription(Clock, '/clock', self.clock_cb, 1)
+        while not self.got_clock:
+            self.logger.info('waiting for clock')
+            rclpy.spin_once(self)
 
         self.pub_status = self.create_publisher(GoalStatus, '/navigation_result', 1)
 
@@ -36,12 +47,12 @@ class TrialRunner(Node):
             if printed:
                 self.logger.info('Connected to /navigate_to_pose')
 
-            self.pub_3d = self.create_publisher(PoseStamped, '/trial_goal_pose', 1)
-            self.pub_2d = self.create_publisher(Pose2DStamped, '/trial_goal_pose_2d', 1)
+            self.pub_3d = self.create_publisher(PoseStamped, '/trial_goal_pose', latching_qos)
+            self.pub_2d = self.create_publisher(Pose2DStamped, '/trial_goal_pose_2d', latching_qos)
 
             # Construct Goal
             self.goal_msg = NavigateToPose.Goal()
-            self.goal_msg.pose.header.frame_id = 'map'
+            self.goal_msg.pose.header.frame_id = self.get_parameter('goal_frame').value
             self.goal_msg.pose.pose.position.x = self.get_parameter('goal_pose_x').value
             self.goal_msg.pose.pose.position.y = self.get_parameter('goal_pose_y').value
 
@@ -59,12 +70,6 @@ class TrialRunner(Node):
             self.pose2d.pose.theta = yaw
 
             self.send_goal()
-        else:
-            self.got_clock = False
-            self.clock_sub = self.create_subscription(Clock, '/clock', self.clock_cb, 1)
-            while not self.got_clock:
-                self.logger.info('waiting for clock')
-                rclpy.spin_once(self)
 
         self.timeout_length = self.get_parameter('timeout').value
         if self.timeout_length > 0.0:

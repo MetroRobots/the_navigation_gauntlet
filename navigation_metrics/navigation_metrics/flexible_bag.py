@@ -2,17 +2,19 @@ from rosbag2_py import SequentialReader, SequentialWriter
 from rosbag2_py import StorageOptions, StorageFilter, ConverterOptions, TopicMetadata
 from rclpy.serialization import deserialize_message, serialize_message
 from rosidl_runtime_py.utilities import get_message
+from tf2_ros.buffer import Buffer
+from rclpy.duration import Duration
 
+from .bag_message import BagMessage
 from .parameters import get_parameter
+from .util import stamp_to_float
 
 import collections
+import math
 import pathlib
 import shutil
 import tempfile
 import yaml
-
-# Bag Message type for pairing a message with the floating point time it was recorded in the bag file
-BagMessage = collections.namedtuple('BagMessage', 't msg')
 
 
 def get_message_name(obj):
@@ -52,6 +54,7 @@ class FlexibleBag:
         self.write_mods = write_mods
         self.cached_topics = {}
         self.new_topics = {}
+        self.buffer = None
 
         # Read Initial Topic Information
         reader = SequentialReader()
@@ -226,6 +229,37 @@ class FlexibleBag:
 
     def get_end_time(self):
         return self.get_start_time() + self.length()
+
+    def get_sim_time_offset(self):
+        clock_msgs = self['/clock']
+        if not clock_msgs:
+            return 0.0
+        first_t, first_msg = clock_msgs[0]
+        return stamp_to_float(first_msg.clock) - first_t
+
+    def get_tf_buffer(self):
+        if self.buffer:
+            return self.buffer
+
+        # Create a buffer with ALL the transforms
+        bag_length = math.ceil(self.length())
+        buffer_length = Duration(seconds=bag_length)
+        self.buffer = Buffer(buffer_length)
+
+        for t, msg in self['/tf']:
+            for transform in msg.transforms:
+                self.buffer.set_transform(transform, 'bagfile')
+        return self.buffer
+
+    def get_transformed_sequence(self, topic, frame_id):
+        self.get_tf_buffer()
+
+        for t, msg in self[topic]:
+            try:
+                result = self.buffer.transform(msg, frame_id)
+                yield BagMessage(t, result)
+            except Exception:
+                pass
 
     def save(self, output_path):
         """Save results to file"""

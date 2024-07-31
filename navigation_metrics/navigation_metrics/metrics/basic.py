@@ -1,7 +1,7 @@
 from action_msgs.msg import GoalStatus
 
 from navigation_metrics.metric import nav_metric
-from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
+from navigation_metrics import BagMessage, flexible_bag_converter_function
 
 
 @flexible_bag_converter_function('/trial_goal_pose')

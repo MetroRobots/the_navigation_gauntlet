@@ -31,6 +31,9 @@ class WindowBag:
     def get_parameter(self, name, default_value):
         return self.bag.get_parameter(name, default_value)
 
+    def get_tf_buffer(self):
+        return self.bag.get_tf_buffer()
+
     def __getitem__(self, arg):
         return self.window.in_range(self.bag[arg])
 

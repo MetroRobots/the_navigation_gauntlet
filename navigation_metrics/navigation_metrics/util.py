@@ -3,7 +3,7 @@ from angles import shortest_angular_distance
 from builtin_interfaces.msg import Time
 import numpy
 
-from .flexible_bag import BagMessage
+from .bag_message import BagMessage
 
 
 def point_distance(p0, p1):
@@ -18,6 +18,7 @@ def pose_distance(p0, p1):
 
 
 def pose_stamped_distance(p0, p1):
+    assert p0.header.frame_id == p1.header.frame_id, f'{p0.header.frame_id} != {p1.header.frame_id}'
     return point_distance(p0.pose.position, p1.pose.position)
 
 
@@ -87,7 +88,7 @@ def metric_final(series, getter=default_getter):
 
 def min_max_total_avg(series, getter=default_getter):
     if not series:
-        return None, None, None
+        return None, None, None, None
 
     total = 0.0
     the_min = None
@@ -131,3 +132,11 @@ def min_max_avg_dev_d(series, getter=default_getter):
     the_min, the_max, _, avg = min_max_total_avg(series, getter)
     stddev = standard_deviation(series, getter)
     return {'min': the_min, 'max': the_max, 'avg': avg, 'stddev': stddev}
+
+
+def get_regular_timepoints(start_time, end_time, period):
+    t = start_time
+    while t < end_time:
+        yield t
+        t += period
+    yield end_time

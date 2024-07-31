@@ -1,9 +1,11 @@
 from math import atan2
 
 from tf_transformations import euler_from_quaternion
+import tf2_py
+import tf2_geometry_msgs  # noqa
 from angles import shortest_angular_distance
 
-from geometry_msgs.msg import PoseStamped, Point, Pose, Pose2D
+from geometry_msgs.msg import PoseStamped, Pose2D
 from nav_2d_msgs.msg import Path2D, Pose2DStamped
 from std_msgs.msg import Float32
 
@@ -13,43 +15,46 @@ from polygon_utils.shortest_path import shortest_path
 from navigation_metrics.metric import nav_metric, nav_metric_set
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
 from navigation_metrics.util import pose_stamped_distance, pose2d_distance, point_distance, metric_final
-from navigation_metrics.util import min_max_avg_d
-
-
-def vector_to_point(v):
-    p = Point()
-    p.x = v.x
-    p.y = v.y
-    p.z = v.z
-    return p
-
-
-def transform_to_pose(transform):
-    pose = Pose()
-    pose.position = vector_to_point(transform.translation)
-    pose.orientation = transform.rotation
-    return pose
+from navigation_metrics.util import min_max_avg_d, float_to_stamp, get_regular_timepoints
 
 
 @flexible_bag_converter_function('/path')
 def tf_to_pose(data):
     seq = []
-    last_t = None
 
     global_frame = data.get_parameter('global_frame', 'map')
     robot_frame = data.get_parameter('robot_frame', 'base_link')
     period = data.get_parameter('path_point_period', 0.1)
 
-    for t, msg in data['/tf']:
-        for transform in msg.transforms:
-            if transform.header.frame_id == global_frame and transform.child_frame_id == robot_frame:
-                if last_t is None or (t - last_t) >= period:
-                    ps = PoseStamped()
-                    ps.header = transform.header
-                    ps.pose = transform_to_pose(transform.transform)
-                    seq.append(BagMessage(t, ps))
-                    last_t = t
+    start = data.get_start_time()
+    end = data.get_end_time()
+    sim_offset = data.get_sim_time_offset()
+
+    buffer = data.get_tf_buffer()
+
+    for t in get_regular_timepoints(start, end, period):
+        sim_time = t + sim_offset
+        if sim_time < 0:
+            continue
+        ps = PoseStamped()
+        ps.header.stamp = float_to_stamp(t + sim_offset)
+        ps.header.frame_id = robot_frame
+
+        try:
+            new_pose = buffer.transform(ps, global_frame)
+            seq.append(BagMessage(t, new_pose))
+        except tf2_py.ExtrapolationException:
+            pass
+
+    if not seq:
+        raise RuntimeError(f'Unable to find transform from {global_frame=} to {robot_frame=} to define /path')
     return seq
+
+
+def quaternion_to_yaw(quat):
+    qa = quat.x, quat.y, quat.z, quat.w
+    angles = euler_from_quaternion(qa)
+    return angles[-1]
 
 
 def pose_to_pose2d(msg):
@@ -57,10 +62,7 @@ def pose_to_pose2d(msg):
     pose2d.header = msg.header
     pose2d.pose.x = msg.pose.position.x
     pose2d.pose.y = msg.pose.position.y
-    quat = msg.pose.orientation
-    qa = quat.x, quat.y, quat.z, quat.w
-    angles = euler_from_quaternion(qa)
-    pose2d.pose.theta = angles[-1]
+    pose2d.pose.theta = quaternion_to_yaw(msg.pose.orientation)
     return pose2d
 
 
@@ -86,7 +88,7 @@ def convert_goal_pose_to_pose2d(data):
 def pose_to_goal_distance(data):
     goal = data['/trial_goal_pose'][0].msg
     seq = []
-    for t, msg in data['/path']:
+    for t, msg in data.get_transformed_sequence('/path', goal.header.frame_id):
         fmsg = Float32()
         fmsg.data = pose_stamped_distance(goal, msg)
         seq.append(BagMessage(t, fmsg))
@@ -99,11 +101,17 @@ def angle_to_goal(data):
     Angle to the goal at the end of the trial
 
     Units: Radians
-    Topics: /trial_goal_pose_2d /path2d
+    Topics: /trial_goal_pose /path
     """
-    goals = data['/trial_goal_pose_2d']
-    path = data['/path2d']
-    return abs(shortest_angular_distance(goals[0].msg.pose.theta, path[-1].msg.pose.theta))
+    goals = data['/trial_goal_pose']
+    path = data['/path']
+    assert goals and path
+    goal_msg = goals[0].msg
+    pose_msg = path[-1].msg
+    transformed_pose = data.get_tf_buffer().transform(pose_msg, goal_msg.header.frame_id)
+    goal_yaw = quaternion_to_yaw(goal_msg.pose.orientation)
+    pose_yaw = quaternion_to_yaw(transformed_pose.pose.orientation)
+    return abs(shortest_angular_distance(goal_yaw, pose_yaw))
 
 
 @nav_metric_set(['min', 'max', 'avg', 'final'])
