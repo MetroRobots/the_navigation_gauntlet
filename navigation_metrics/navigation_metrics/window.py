@@ -16,11 +16,18 @@ class TimeWindow:
     def length(self):
         return self.end - self.start
 
+    def __str__(self):
+        return f'TimeWindow({self.start}-{self.end})'
+
 
 class WindowBag:
-    def __init__(self, bag, window):
+    def __init__(self, bag, window, margin=1.0):
         self.bag = bag
         self.window = window
+        if self.window:
+            self.fallback_window = TimeWindow(self.window.start - margin, self.window.end + margin)
+        else:
+            self.fallback_window = None
 
     def __contains__(self, topic):
         return topic in self.bag
@@ -35,7 +42,10 @@ class WindowBag:
         return self.bag.get_tf_buffer()
 
     def __getitem__(self, arg):
-        return self.window.in_range(self.bag[arg])
+        ret = self.window.in_range(self.bag[arg])
+        if ret or not self.fallback_window:
+            return ret
+        return self.fallback_window.in_range(self.bag[arg])
 
     def length(self):
         return self.window.length()

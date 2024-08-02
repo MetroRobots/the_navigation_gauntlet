@@ -76,8 +76,9 @@ def compute_metrics(bag_path, metric_names=None, ignore_errors=False, compute_mo
     bag = FlexibleBag(bag_path, write_mods=False)
 
     if use_window:
+        window_margin = bag.get_parameter('window_margin', 1.0)
         window = get_standard_window(bag)
-        data = WindowBag(bag, window)
+        data = WindowBag(bag, window, window_margin)
     else:
         data = bag
 
