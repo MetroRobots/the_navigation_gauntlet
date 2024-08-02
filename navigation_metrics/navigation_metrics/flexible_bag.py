@@ -231,6 +231,8 @@ class FlexibleBag:
         return self.get_start_time() + self.length()
 
     def get_sim_time_offset(self):
+        if '/clock' not in self.type_map:
+            return 0.0
         clock_msgs = self['/clock']
         if not clock_msgs:
             return 0.0

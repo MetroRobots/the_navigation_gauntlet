@@ -1,4 +1,4 @@
-from math import hypot, modf
+from math import hypot, modf, cos, sin
 from angles import shortest_angular_distance
 from builtin_interfaces.msg import Time
 import numpy
@@ -26,6 +26,17 @@ def pose2d_distance(p0, p1):
     dx = p0.x - p1.x
     dy = p0.y - p1.y
     return hypot(dx, dy), shortest_angular_distance(p0.theta, p1.theta)
+
+
+def planar_distance(p0, p1):
+    dx = p1.x - p0.x
+    dy = p1.y - p0.y
+    cos_t = cos(p0.theta)
+    sin_t = sin(p0.theta)
+
+    x2 = cos_t * dx - sin_t * dy
+    y2 = sin_t * dx + cos_t * dy
+    return x2, y2, shortest_angular_distance(p0.theta, p1.theta)
 
 
 def stamp_to_float(stamp):

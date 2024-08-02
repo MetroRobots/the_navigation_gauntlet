@@ -2,7 +2,7 @@ from nav_2d_msgs.msg import Twist2D, Twist2DStamped
 
 from navigation_metrics.metric import nav_metric
 from navigation_metrics.flexible_bag import BagMessage, flexible_bag_converter_function
-from navigation_metrics.util import pose2d_distance, stamp_to_float, average, metric_max, stampify
+from navigation_metrics.util import stamp_to_float, average, metric_max, stampify, planar_distance
 
 
 @flexible_bag_converter_function('/actual_velocity')
@@ -15,9 +15,12 @@ def poses_to_velocity(data):
             dt1 = stamp_to_float(bmsg.msg.header.stamp) - stamp_to_float(prev.msg.header.stamp)
             twist = Twist2DStamped()
             twist.header = bmsg.msg.header
-            d, turn = pose2d_distance(bmsg.msg.pose, prev.msg.pose)
-            twist.velocity.x = d / dt1
-            twist.velocity.theta = turn / dt1
+            dx, dy, dtheta = planar_distance(prev.msg.pose, bmsg.msg.pose)
+
+            twist.velocity.x = float(dx / dt1)
+            twist.velocity.y = float(dy / dt1)
+            twist.velocity.theta = dtheta / dt1
+
             seq.append(BagMessage(bmsg.t, twist))
         prev = bmsg
     return seq
@@ -46,6 +49,7 @@ def command_vel_2d(data):
     for bmsg in data['/cmd_vel']:
         twist = Twist2D()
         twist.x = bmsg.msg.linear.x
+        twist.y = bmsg.msg.linear.y
         twist.theta = bmsg.msg.angular.z
         seq.append(BagMessage(bmsg.t, twist))
     return seq
