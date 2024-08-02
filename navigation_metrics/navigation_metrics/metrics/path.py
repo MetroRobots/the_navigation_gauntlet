@@ -149,6 +149,25 @@ def path_length(data):
 
 
 @nav_metric
+def total_rotation(data):
+    """
+    Amount of rotation in the path taken over the entire trial.
+
+    Units: Radians
+    Topics: /path
+    """
+    total = 0.0
+    prev_yaw = None
+    for t, pose in data['/path2d']:
+        yaw = pose.pose.theta
+        if prev_yaw is not None:
+            total += abs(shortest_angular_distance(prev_yaw, yaw))
+        prev_yaw = yaw
+
+    return total
+
+
+@nav_metric
 def straight_line_efficiency(data):
     """
     The ratio of the straight line connecting the beginning and ending of the path to the actual path length
@@ -188,6 +207,7 @@ def interpolate_path(start_pose, path, goal_pose):
     return path_msg
 
 
+@flexible_bag_converter_function('/shortest_path')
 def shortest_path_calculation(data):
     start_bmsg = data['/path'][0]
     start_pose = start_bmsg.msg
@@ -204,27 +224,71 @@ def shortest_path_calculation(data):
 
     path = interpolate_path(start_pose, path2d, end_pose)
 
-    return path
+    return [BagMessage(start_bmsg.t, path)]
+
+
+@nav_metric
+def shortest_possible_path_distance(data):
+    """
+    The length of the shortest possible path (given obstacles)
+
+    Units: Meters
+    Topics: /polygon_map
+    """
+    shortest_path = data['/shortest_path'][0].msg
+    prev_pose = None
+    total_distance = 0.0
+    for pose in shortest_path.poses:
+        if prev_pose:
+            d, _ = pose2d_distance(pose, prev_pose)
+            total_distance += d
+        prev_pose = pose
+    return total_distance
+
+
+@nav_metric
+def minimum_rotational_path_distance(data):
+    """
+    The amount of turning needed for the shortest possible path
+
+    Unites: Radians
+    Topics: /polygon_map
+    """
+    shortest_path = data['/shortest_path'][0].msg
+    prev_yaw = None
+    total_rotation = 0.0
+    for pose in shortest_path.poses:
+        if prev_yaw is not None:
+            total_rotation += abs(shortest_angular_distance(prev_yaw, pose.theta))
+        prev_yaw = pose.theta
+    return total_rotation
 
 
 @nav_metric
 def efficiency(data):
     """
-    The ratio of the shortest possible path (given obstacles) to the actual path length
+    The ratio of the length of the shortest possible path (given obstacles) to the actual path length
 
     Units: Float [0, 1]
     Topics: /path, /polygon_map
     """
     pl = path_length(data)
-
-    op = shortest_path_calculation(data)
-    od = 0.0
-    prev_pose = None
-    for pose in op.poses:
-        if prev_pose is None:
-            prev_pose = pose
-        d, _ = pose2d_distance(pose, prev_pose)
-        od += d
-        prev_pose = pose
-
+    if pl == 0.0:
+        return 1.0
+    od = shortest_possible_path_distance(data)
     return od / pl
+
+
+@nav_metric
+def rotational_efficiency(data):
+    """
+    The ratio of the minimum_rotational_path_distance to the actual amount of turning.
+
+    Units: Float [0, 1]
+    Topics: /path, /polygon_map
+    """
+    tr = total_rotation(data)
+    if tr == 0.0:
+        return 1.0
+    mr = minimum_rotational_path_distance(data)
+    return mr / tr
