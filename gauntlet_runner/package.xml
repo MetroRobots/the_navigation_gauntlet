@@ -13,7 +13,6 @@
   <depend>nav_2d_msgs</depend>
   <depend>rclpy</depend>
   <depend>ros2launch</depend>
-  <depend>simple_actions</depend>
   <depend>tf_transformations</depend>
 
   <export>
