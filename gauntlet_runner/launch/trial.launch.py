@@ -56,6 +56,7 @@ def generate_launch_description():
         [FindPackageShare(LaunchConfiguration('nav_config_package')), '/launch/bringup.launch.py'],
         launch_arguments=[
             ('config_path', LaunchConfiguration('nav_config_path')),
+            ('use_sim_time', 'true'),
         ],
         condition=IfCondition(PythonExpression(['len("', LaunchConfiguration('nav_config_package'), '") > 0'])),
     ))
