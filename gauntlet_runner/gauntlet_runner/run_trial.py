@@ -18,11 +18,13 @@ class TrialRunner(Node):
         self.declare_parameter('goal_pose_y', 0.0)
         self.declare_parameter('goal_pose_yaw', 0.0)
         self.declare_parameter('goal_frame', 'map')
+        self.declare_parameter('goal_delay', 0.0)
         self.declare_parameter('timeout', 600.0)
         self.completed = None
         self.logger = self.get_logger()
         self.timer = None
         self.timeout_timer = None
+        self.goal_timer = None
 
         latching_qos = QoSProfile(depth=1,
                                   durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
@@ -69,7 +71,11 @@ class TrialRunner(Node):
             self.pose2d.pose.y = self.goal_msg.pose.pose.position.y
             self.pose2d.pose.theta = yaw
 
-            self.send_goal()
+            goal_delay = self.get_parameter('goal_delay').value
+            if goal_delay == 0.0:
+                self.send_goal()
+            else:
+                self.goal_timer = self.create_timer(goal_delay, self.send_goal)
 
         self.timeout_length = self.get_parameter('timeout').value
         if self.timeout_length > 0.0:
@@ -86,6 +92,8 @@ class TrialRunner(Node):
 
         if self.timer:
             self.timer.cancel()
+        if self.goal_timer:
+            self.goal_timer.cancel()
 
     def _goal_response_callback(self, future):
         goal_handle = future.result()
