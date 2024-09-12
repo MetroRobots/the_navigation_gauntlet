@@ -128,6 +128,9 @@ class TrialRunner(Node):
         status_msg = GoalStatus()
         status_msg.status = GoalStatus.STATUS_ABORTED
         self.pub_status.publish(status_msg)
+
+        # TODO: Cancel action server?
+        # TODO: Rely on other callback
         self.logger.info(f'Navigation trial timed out after {self.timeout_length} seconds.')
         rclpy.shutdown()
 

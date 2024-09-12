@@ -36,6 +36,9 @@ def format_value(pconfig, value, include_name=True):
     else:
         fv = str(value)
     if include_name:
-        return pconfig['name'].partition('/')[2] + '_' + fv
+        if pconfig['name'].partition('/') != pconfig['name'].rpartition('/'):
+            print(pconfig['name'])
+            exit(0)
+        return pconfig['name'].rpartition('/')[2] + '_' + fv
     else:
         return fv

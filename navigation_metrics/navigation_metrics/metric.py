@@ -33,6 +33,7 @@ def nav_metric(f):
 def nav_metric_set(suffixes):
     """A nav metric set is a function that takes a FlexibleBag as a parameter and returns
        a dictionary of metric names to simple datatypes."""
+    # TODO: Check parameters for nav_metric_set
     def inner_decorator(f):
         _nav_metrics[f.__name__] = f
         _nav_metric_sets[f.__name__] = suffixes
