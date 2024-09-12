@@ -21,13 +21,9 @@ class TimeWindow:
 
 
 class WindowBag:
-    def __init__(self, bag, window, margin=1.0):
+    def __init__(self, bag, window):
         self.bag = bag
         self.window = window
-        if self.window:
-            self.fallback_window = TimeWindow(self.window.start - margin, self.window.end + margin)
-        else:
-            self.fallback_window = None
 
     def __contains__(self, topic):
         return topic in self.bag
@@ -43,9 +39,11 @@ class WindowBag:
 
     def __getitem__(self, arg):
         ret = self.window.in_range(self.bag[arg])
-        if ret or not self.fallback_window:
-            return ret
-        return self.fallback_window.in_range(self.bag[arg])
+        # If there is only one message, its likely a latched topic, so return it anyway
+        # TODO: Record QoS
+        if not ret and len(self.bag[arg]) == 1:
+            ret = self.bag[arg]
+        return ret
 
     def length(self):
         return self.window.length()
