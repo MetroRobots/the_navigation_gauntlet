@@ -35,6 +35,30 @@ def analyze_bags(folder_path, compute_mode, metric_names=None, use_window=True):
     return data
 
 
+def aggregate_rows(data, my_metrics, base_path):
+    rows = []
+    for path, metrics in sorted(data.items()):
+        row = {}
+        row['name'] = str(path).replace(base_path, '')
+        params = metrics.pop('parameters', {})
+        metrics.update(params)
+
+        for metric in my_metrics:
+            mname, _, mrest = metric.partition('/')
+            if mname not in metrics:
+                continue
+            m = metrics[mname]
+            if isinstance(m, dict):
+                for k, v in m.items():
+                    if mrest and mrest != k:
+                        continue
+                    row[f'{mname}/{k}'] = v
+            else:
+                row[mname] = m
+        rows.append(row)
+    return rows
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
@@ -49,12 +73,10 @@ def main():
     global_metric_search()
     compute_mode = ComputeMode[args.compute_mode.upper()]
 
-    row_sets = collections.defaultdict(list)
-    by_metrics = collections.defaultdict(lambda: collections.defaultdict(list))
 
     my_metrics = None
     if args.skip_dimensions is None and args.include_dimensions is None:
-        my_metrics = get_metrics().keys()
+        my_metrics = list(get_metrics().keys())
     elif args.skip_dimensions is None:
         my_metrics = args.include_dimensions
     else:
@@ -65,27 +87,15 @@ def main():
     data = analyze_bags(args.folder, compute_mode, my_metrics, use_window=not args.no_window)
 
     base_path = str(args.folder.resolve()) + '/'
-    for path, metrics in sorted(data.items()):
-        row = {}
-        row['name'] = str(path).replace(base_path, '')
+    
+    row_sets = collections.defaultdict(list)
+    by_metrics = collections.defaultdict(lambda: collections.defaultdict(list))
 
-        params = metrics.pop('parameters', {})
-        metrics.update(params)
-        d_v = args.dimension.get_value(metrics)
-
-        for metric in my_metrics:
-            mname, _, mrest = metric.partition('/')
-            if mname not in metrics:
-                continue
-            m = metrics[mname]
-            if isinstance(m, dict):
-                for k, v in m.items():
-                    if mrest and mrest != k:
-                        continue
-                    row[f'{mname}/{k}'] = v
-            else:
-                row[mname] = m
-
+    agg_metrics = my_metrics
+    if args.dimension:
+        agg_metrics.append(str(args.dimension))
+    for row in aggregate_rows(data, agg_metrics, base_path):
+        d_v = args.dimension.get_value(row)
         row_sets[d_v].append(row)
 
         for metric, value in row.items():
