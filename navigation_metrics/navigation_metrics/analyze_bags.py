@@ -64,7 +64,7 @@ def main():
     parser.add_argument('folder', type=pathlib.Path, default='.', nargs='?')
     parser.add_argument('-t', '--table-style', default='tsv')
     parser.add_argument('-c', '--compute-mode', choices=[m.name.lower() for m in ComputeMode], default='needed')
-    parser.add_argument('-d', '--dimension', type=Dimension, nargs='?', default='')
+    parser.add_argument('-d', '--dimensions', metavar='dimension', type=Dimension, nargs='+', default=[])
     parser.add_argument('-s', '--skip-dimensions', nargs='*')
     parser.add_argument('-i', '--include-dimensions', nargs='*')
     parser.add_argument('-n', '--no-window', action='store_true')
@@ -92,10 +92,11 @@ def main():
     by_metrics = collections.defaultdict(lambda: collections.defaultdict(list))
 
     agg_metrics = my_metrics
-    if args.dimension:
-        agg_metrics.append(str(args.dimension))
+    for dimension in args.dimensions:
+        agg_metrics.append(str(dimension))
+
     for row in aggregate_rows(data, agg_metrics, base_path):
-        d_v = args.dimension.get_value(row)
+        d_v = tuple(dimension.get_value(row) for dimension in args.dimensions) or None
         row_sets[d_v].append(row)
 
         for metric, value in row.items():
@@ -105,14 +106,16 @@ def main():
 
     tablefmt = args.table_style
     for d_v, rows in row_sets.items():
-        if args.dimension.name:
-            print(args.dimension.format_name(d_v))
+        if args.dimensions:
+            for dimension, d_vi in zip(args.dimensions, d_v):
+                print(dimension.format_name(d_vi))
         print(tabulate.tabulate(rows, headers='keys', tablefmt=tablefmt))
         print()
 
     for d_v in by_metrics:
-        if args.dimension.name:
-            print(args.dimension.format_name(d_v))
+        if args.dimensions:
+            for dimension, d_vi in zip(args.dimensions, d_v):
+                print(dimension.format_name(d_vi))
 
         rows = []
         for metric, values in by_metrics[d_v].items():
