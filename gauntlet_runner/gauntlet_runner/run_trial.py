@@ -60,10 +60,10 @@ class TrialRunner(Node):
 
             yaw = self.get_parameter('goal_pose_yaw').value
             quat = quaternion_from_euler(0, 0, yaw)
-            self.goal_msg.pose.pose.orientation.w = quat[0]
-            self.goal_msg.pose.pose.orientation.x = quat[1]
-            self.goal_msg.pose.pose.orientation.y = quat[2]
-            self.goal_msg.pose.pose.orientation.z = quat[3]
+            self.goal_msg.pose.pose.orientation.x = quat[0]
+            self.goal_msg.pose.pose.orientation.y = quat[1]
+            self.goal_msg.pose.pose.orientation.z = quat[2]
+            self.goal_msg.pose.pose.orientation.w = quat[3]
 
             self.pose2d = Pose2DStamped()
             self.pose2d.header = self.goal_msg.pose.header
