@@ -5,6 +5,7 @@ import os
 import pathlib
 
 from navigation_metrics import FlexibleBag, global_metric_search
+from navigation_metrics.analyze_bag import get_standard_window, WindowBag
 
 
 class Datum:
@@ -33,8 +34,16 @@ def plot(bag_paths, datums):
     ys = collections.defaultdict(lambda: collections.defaultdict(list))
     common_prefix = os.path.commonprefix([p.parts for p in bag_paths])
 
+    window_vals = None
+
     for bag_path in bag_paths:
         bag = FlexibleBag(bag_path, write_mods=False)
+
+        if len(bag_paths) == 1 and datums[0].subfields == ['t']:
+            window = get_standard_window(bag)
+            t0 = bag.get_start_time()
+            window_vals = window.start - t0, window.end - t0
+
         x, y = [datum.get_sequence(bag) for datum in datums]
         unique_bit = bag_path.parts[len(common_prefix):]
         key = str(pathlib.Path(*unique_bit))
@@ -55,6 +64,10 @@ def plot(bag_paths, datums):
             ax.legend()
         ax.set_xlabel(datums[0].full_name)
         ax.set_ylabel(datums[1].full_name)
+
+        if window_vals:
+            for val in window_vals:
+                ax.axvline(x=val, color='orange', linestyle='dashed')
     show()
 
 

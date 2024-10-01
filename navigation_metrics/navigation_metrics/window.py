@@ -37,6 +37,9 @@ class WindowBag:
     def get_tf_buffer(self):
         return self.bag.get_tf_buffer()
 
+    def get_start_time(self):
+        return self.bag.get_start_time()
+
     def __getitem__(self, arg):
         ret = self.window.in_range(self.bag[arg])
         # If there is only one message, its likely a latched topic, so return it anyway
