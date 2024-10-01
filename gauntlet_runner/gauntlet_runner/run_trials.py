@@ -85,7 +85,7 @@ def write_temp_parameter_file(parameters, node_name='/**', ros_params=True):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('trials_config_path', type=pathlib.Path)
+    parser.add_argument('trials_config_paths', metavar='trials_config_path', type=pathlib.Path, nargs='+')
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing data')
     parser.add_argument('-g', '--gui', action='store_true', help='show the graphics')
     args = parser.parse_args()
@@ -94,25 +94,31 @@ def main():
         package_name='gauntlet_runner',
         file_name='trial.launch.py')
 
-    trials_config = yaml.safe_load(open(args.trials_config_path))
-    if 'root_path' in trials_config:
-        root_path = pathlib.Path(trials_config['root_path'])
-    else:
-        root_path = args.trials_config_path.parent
+    todo_list = []
 
-    root_path = root_path.expanduser().resolve()
+    for config_path in args.trials_config_paths:
+        trials_config = yaml.safe_load(open(config_path))
+        if 'root_path' in trials_config:
+            root_path = pathlib.Path(trials_config['root_path'])
+        else:
+            root_path = config_path.parent
 
-    for param_config in explore_parameter_space(trials_config['parameters']):
-        bag_path = get_record_path(root_path, trials_config, param_config)
-        bag_path.parent.mkdir(exist_ok=True, parents=True)
+        root_path = root_path.expanduser().resolve()
 
-        if bag_path.exists():
-            if args.force:
-                shutil.rmtree(bag_path)
-            else:
-                print(f'Skipping {bag_path}')
-                continue
+        for param_config in explore_parameter_space(trials_config['parameters']):
+            bag_path = get_record_path(root_path, trials_config, param_config)
+            bag_path.parent.mkdir(exist_ok=True, parents=True)
 
+            if bag_path.exists():
+                if args.force:
+                    shutil.rmtree(bag_path)
+                else:
+                    print(f'Skipping {bag_path}')
+                    continue
+
+            todo_list.append((trials_config, param_config, bag_path))
+
+    for trials_config, param_config, bag_path in todo_list:
         sim_config, nav_config, data_config, trial_config = get_parameters(trials_config, param_config)
         launch_arguments = []
 
