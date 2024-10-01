@@ -19,6 +19,7 @@ def main():
     parser.add_argument('-s', '--series-axis')
     parser.add_argument('-f', '--filter-axes', nargs='*', default=[])
     parser.add_argument('-l', '--log', action='store_true')
+    parser.add_argument('--linear', action='store_true')
     parser.add_argument('--horizontal-lines', type=float, nargs='+', default=[])
     args = parser.parse_args()
 
@@ -89,23 +90,28 @@ def main():
             ordered_s = list(xs[p_v])
         for s_v in ordered_s:
             label = dimensions['s'].format_name(s_v)
+            plot_x = xs[p_v][s_v]
+            plot_y = ys[p_v][s_v]
 
-            if dimensions['x'].op == '%':
-                buckets = collections.defaultdict(list)
-                for x, y in zip(xs[p_v][s_v], ys[p_v][s_v]):
-                    buckets[x].append(y)
-                bxs = sorted(buckets)
-                bys = []
-                berr = []
-                for bx in bxs:
-                    values = numpy.array(buckets[bx])
-                    bys.append(numpy.mean(values))
-                    berr.append(numpy.std(values))
-                ax.errorbar(bxs, bys, yerr=berr, fmt='o', label=label)
-
+            if dimensions['x'].op != '%':
+                ax.plot(plot_x, plot_y, 'o', label=label)
             else:
-                ax.plot(xs[p_v][s_v], ys[p_v][s_v], 'o', label=label)
-        if args.series_axis:
+                buckets = collections.defaultdict(list)
+                for x, y in zip(plot_x, plot_y):
+                    buckets[x].append(y)
+                plot_x = sorted(buckets)
+                plot_y = []
+                y_err = []
+                for x_v in plot_x:
+                    values = numpy.array(buckets[x_v])
+                    plot_y.append(numpy.mean(values))
+                    y_err.append(numpy.std(values))
+                ax.errorbar(plot_x, plot_y, yerr=y_err, fmt='o', label=label)
+
+            if args.linear:
+                m, b = numpy.polyfit(plot_x, plot_y, 1)
+                ax.plot(plot_x, m*numpy.array(plot_x)+b, label=f'y = {m:.2f}x + {b:.2f}')
+        if args.series_axis or args.linear:
             ax.legend()
         ax.set_xlabel(args.x)
         ax.set_ylabel(args.y)
