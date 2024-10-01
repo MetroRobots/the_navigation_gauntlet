@@ -19,6 +19,7 @@ def main():
     parser.add_argument('-s', '--series-axis')
     parser.add_argument('-f', '--filter-axes', nargs='*', default=[])
     parser.add_argument('-l', '--log', action='store_true')
+    parser.add_argument('--horizontal-lines', type=float, nargs='+', default=[])
     args = parser.parse_args()
 
     data = analyze_bags(args.folder, ComputeMode.NOTHING)
@@ -108,6 +109,9 @@ def main():
             ax.legend()
         ax.set_xlabel(args.x)
         ax.set_ylabel(args.y)
+
+        for y_val in args.horizontal_lines:
+            ax.axhline(y=y_val, color='r', linestyle='-')
     show()
 
 
